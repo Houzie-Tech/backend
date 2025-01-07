@@ -69,7 +69,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard)
-  @Get('admin')
+  @Get('ADMIN')
   adminRoute() {
     return { message: 'Admin access granted' };
   }

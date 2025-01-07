@@ -39,6 +39,7 @@ model User {
   isPhoneVerified Boolean        @default(false)
   otps            OTP[]
   refreshTokens   RefreshToken[]
+  listings        Listing[] // Relationship with forms
 }
 
 model OTP {
@@ -66,3 +67,33 @@ model RefreshToken {
   @@index([userId])
 }
 
+// New model for forms submitted by brokers
+model Listing {
+  id          String @id @default(uuid())
+  title       String
+  description String // Detailed property description
+  price       Float // Price or rent amount
+
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id]) // Embedded location details
+
+  status String @default("PENDING") // Status of the form (e.g., PENDING, APPROVED, REJECTED)
+
+  brokerId String
+  broker   User   @relation(fields: [brokerId], references: [id]) // Association with User having the BROKER role
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brokerId])
+}
+
+model Location {
+  id        String    @id @default(uuid())
+  city      String // City where the property is located
+  state     String // State/Province
+  country   String // Country
+  latitude  Float // Geographical latitude
+  longitude Float // Geographical longitude
+  Listing   Listing[]
+}

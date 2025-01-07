@@ -1,3 +1,15 @@
+// types/jwt.types.ts
+export interface JWTPayload {
+  id: string;
+  email: string;
+  role: 'ADMIN' | 'BROKER' | 'RENTER';
+  phoneNumber: string;
+  name: string;
+  iat: number;
+  exp: number;
+}
+
+// guards/auth.guard.ts
 import {
   CanActivate,
   ExecutionContext,
@@ -9,7 +21,6 @@ import { Request } from 'express';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  // eslint-disable-next-line no-unused-vars
   constructor(private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -19,12 +30,13 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
+      const payload = await this.jwtService.verifyAsync<JWTPayload>(token, {
         secret: process.env.JWT_SECRET,
       });
-      // 💡 We're assigning the payload to the request object here
-      // so that we can access it in our route handlers
-      request['user'] = payload;
+
+      // Explicitly type and structure the user object on the request
+      request.user = payload;
+      console.log('🚀 ~ AuthGuard ~ canActivate ~ request:', request.user);
     } catch {
       throw new UnauthorizedException();
     }
