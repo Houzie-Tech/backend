@@ -10,6 +10,7 @@ import { UpdateFormDto } from './dto/update-form.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LocationDto } from './dto/location.dto';
 import { Prisma, Role } from '@prisma/client';
+import { ListingFilters } from './dto/find.dto';
 
 @Injectable()
 export class FormService {
@@ -120,7 +121,6 @@ export class FormService {
     }
   }
 
-  // Separate method for creating location within a transaction
   private async createLocationInTransaction(
     locationDetails: LocationDto,
     prisma: Prisma.TransactionClient,
@@ -200,49 +200,170 @@ export class FormService {
     });
   }
 
-  async findAll(
-    skip = 0,
-    take = 10,
-    status?: string,
-    minPrice?: number,
-    maxPrice?: number,
-  ) {
-    // const where = {
-    //   ...(status && { status }),
-    //   ...(minPrice && { price: { gte: minPrice } }),
-    //   ...(maxPrice && { price: { lte: maxPrice } }),
-    // };
+  async findAll(filters: ListingFilters) {
+    try {
+      const {
+        minPrice,
+        maxPrice,
+        minBedrooms,
+        maxBedrooms,
+        minBathrooms,
+        maxBathrooms,
+        furnishing,
+        propertyType,
+        latitude,
+        longitude,
+        distanceInKm = 10,
+        minAskingPrice,
+        maxAskingPrice,
+        page = 1,
+        limit = 10,
+      } = filters;
 
-    const [listings, total] = await Promise.all([
-      this.prisma.listing.findMany({
-        skip,
-        take,
-        include: {
-          location: true,
-          broker: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              phoneNumber: true,
-            },
+      const skip = (page - 1) * limit;
+      const where: Prisma.ListingWhereInput = {};
+
+      // Price range filter
+      if (minPrice || maxPrice) {
+        where.price = {
+          gte: minPrice,
+          lte: maxPrice,
+        };
+      }
+
+      if (minBedrooms || maxBedrooms) {
+        where.bedrooms = {
+          gte: minBedrooms,
+          lte: maxBedrooms,
+        };
+      }
+
+      if (minBathrooms || maxBathrooms) {
+        where.bathrooms = {
+          gte: minBathrooms,
+          lte: maxBathrooms,
+        };
+      }
+
+      if (furnishing?.length) {
+        where.furnishing = { in: furnishing };
+      }
+
+      if (propertyType?.length) {
+        where.propertyType = { in: propertyType };
+      }
+
+      if (minAskingPrice || maxAskingPrice) {
+        where.sellDetails = {
+          askingPrice: {
+            gte: minAskingPrice,
+            lte: maxAskingPrice,
           },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      this.prisma.listing.count(),
-    ]);
+        };
+      }
 
-    return {
-      listings,
-      metadata: {
-        total,
-        skip,
-        take,
-      },
-    };
+      // Location range filter using a more generous bounding box
+      if (latitude !== undefined && longitude !== undefined) {
+        // Use a slightly larger bounding box to account for Earth's curvature
+        const degreeRadius = (distanceInKm * 1.2) / 111.32;
+
+        // Calculate bounding box
+        const minLat = latitude - degreeRadius;
+        const maxLat = latitude + degreeRadius;
+        // Adjust for longitude distance varying with latitude
+        const longitudeRadius =
+          degreeRadius / Math.cos(this.toRadians(latitude)) || degreeRadius;
+        const minLng = longitude - longitudeRadius;
+        const maxLng = longitude + longitudeRadius;
+
+        where.location = {
+          AND: [
+            { latitude: { gte: minLat } },
+            { latitude: { lte: maxLat } },
+            { longitude: { gte: minLng } },
+            { longitude: { lte: maxLng } },
+          ],
+        };
+
+        console.log('Bounding Box:', {
+          latRange: [minLat, maxLat],
+          lngRange: [minLng, maxLng],
+        });
+      }
+
+      // Get the filtered listings
+      const listings = await this.prisma.listing.findMany({
+        where,
+        select: {
+          id: true,
+          location: true,
+          rentDetails: true,
+          sellDetails: true,
+        },
+      });
+
+      console.log('Listings found:', listings.length);
+      console.log('Raw listings:', listings);
+
+      // Filter by exact distance
+      let filteredListings = listings;
+      if (latitude !== undefined && longitude !== undefined) {
+        filteredListings = listings.filter((listing) => {
+          const distance = this.calculateDistance(
+            latitude,
+            longitude,
+            listing.location.latitude,
+            listing.location.longitude,
+          );
+          console.log(`Distance for listing ${listing.id}: ${distance}km`);
+          return distance <= distanceInKm;
+        });
+      }
+
+      // Apply pagination after distance filtering
+      const total = filteredListings.length;
+      const paginatedListings = filteredListings.slice(skip, skip + limit);
+
+      return {
+        data: paginatedListings,
+        metadata: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientValidationError) {
+        throw new BadRequestException('Invalid filter parameters provided');
+      }
+      throw new InternalServerErrorException(
+        'An error occurred while fetching listings',
+      );
+    }
+  }
+  // Helper method to calculate distance using Haversine formula
+  private calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLon = this.toRadians(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) *
+        Math.cos(this.toRadians(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
   }
 
   async findOne(id: string) {
