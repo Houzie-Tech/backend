@@ -50,6 +50,33 @@ enum RentFor {
   FAMILY
 }
 
+enum LeadStatus {
+  NEW
+  CONTACTED
+  FOLLOWUP
+  VIEWING_SCHEDULED
+  NEGOTIATING
+  CONVERTED
+  LOST
+  ON_HOLD
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum LeadSource {
+  DIRECT
+  REFERRAL
+  WEBSITE
+  SOCIAL_MEDIA
+  PROPERTY_PORTAL
+  OTHER
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -66,6 +93,7 @@ model User {
   otps            OTP[]
   refreshTokens   RefreshToken[]
   listings        Listing[] // Relationship with listings
+  Lead            Lead[]
 }
 
 model OTP {
@@ -120,7 +148,7 @@ model Listing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([price,locationId])
+  @@index([price, locationId])
 }
 
 model RentDetails {
@@ -150,3 +178,53 @@ model Location {
   longitude Float // Geographical longitude
   listings  Listing[]
 }
+
+model Lead {
+  id             String  @id @default(uuid())
+  name           String
+  email          String? // Optional email contact
+  phoneNumber    String  @unique
+  alternatePhone String? // Secondary contact number
+
+  // Requirements
+  budgetMin          Float
+  budgetMax          Float
+  preferredLocations String[] // Array of preferred locations
+  propertyTypes      PropertyType[] // What kinds of properties they're interested in
+  // configuration      String[] // Desired configurations (1BHK, 2BHK, etc.)
+  // furnishing         Furnishing[] // Preferred furnishing options
+  // rentFor            RentFor? // If they're bachelor or family
+  // moveInDate         DateTime? // When they plan to move
+
+  // Lead Status Management
+  // status           LeadStatus @default(NEW)
+  // priority         Priority   @default(MEDIUM)
+  // lastContactedAt  DateTime? // When the broker last reached out
+  // nextFollowUpDate DateTime? // Scheduled next follow-up
+
+  // Notes and Requirements
+  requirements String? // Detailed requirements text
+  // notes        LeadNote[] // Relationship with notes
+
+  // Relationships
+  brokerId String
+  broker   User   @relation(fields: [brokerId], references: [id])
+
+  // Metadata
+  source    LeadSource @default(DIRECT) // How the lead was acquired
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([phoneNumber])
+}
+
+// model LeadNote {
+//   id        String   @id @default(uuid())
+//   content   String
+//   leadId    String
+//   lead      Lead     @relation(fields: [leadId], references: [id])
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   @@index([leadId])
+// }
