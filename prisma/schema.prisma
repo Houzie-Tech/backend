@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -24,6 +21,35 @@ enum OTPType {
   PHONE
 }
 
+enum ListingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ACTIVE
+  CLOSED
+}
+
+enum PropertyType {
+  INDEPENDENT_HOUSE
+  VILLA
+  PLOT
+  BUILDER_FLOOR
+  FLAT_APARTMENT
+  CO_LIVING
+  PG
+}
+
+enum Furnishing {
+  NONE
+  FULLY_FURNISHED
+  SEMI_FURNISHED
+}
+
+enum RentFor {
+  BACHELOR
+  FAMILY
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -39,7 +65,7 @@ model User {
   isPhoneVerified Boolean        @default(false)
   otps            OTP[]
   refreshTokens   RefreshToken[]
-  listings        Listing[] // Relationship with forms
+  listings        Listing[] // Relationship with listings
 }
 
 model OTP {
@@ -67,17 +93,26 @@ model RefreshToken {
   @@index([userId])
 }
 
-// New model for forms submitted by brokers
 model Listing {
-  id          String @id @default(uuid())
-  title       String
-  description String // Detailed property description
-  price       Float // Price or rent amount
+  id            String       @id @default(uuid())
+  title         String
+  description   String // Detailed property description
+  price         Float // Price or rent amount
+  propertyType  PropertyType // Type of property
+  configuration String // 1BHK, 2BHK, etc.
+  bedrooms      Int // Number of bedrooms
+  bathrooms     Int // Number of bathrooms
+  furnishing    Furnishing // Furnishing status
+  rentFor       RentFor[]    @default([]) // Target audience for rental (Bachelor, Family)
+  photos        String[] // Array of photo URLs (max 10)
+
+  rentDetails RentDetails? // Embedded rent details for rental properties
+  sellDetails SellDetails? // Embedded sell details for sale properties
 
   locationId String
   location   Location @relation(fields: [locationId], references: [id]) // Embedded location details
 
-  status String @default("PENDING") // Status of the form (e.g., PENDING, APPROVED, REJECTED)
+  status ListingStatus @default(PENDING) // Status of the form (e.g., PENDING, APPROVED, REJECTED, ACTIVE, CLOSED)
 
   brokerId String
   broker   User   @relation(fields: [brokerId], references: [id]) // Association with User having the BROKER role
@@ -85,7 +120,25 @@ model Listing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([brokerId])
+  @@index([price,locationId])
+}
+
+model RentDetails {
+  id            String   @id @default(uuid())
+  rentAmount    Float // Rent amount
+  deposit       Float // Deposit amount
+  availableFrom DateTime // Availability date
+
+  listingId String  @unique
+  listing   Listing @relation(fields: [listingId], references: [id])
+}
+
+model SellDetails {
+  id          String @id @default(uuid())
+  askingPrice Float // Asking price for sale
+
+  listingId String  @unique
+  listing   Listing @relation(fields: [listingId], references: [id])
 }
 
 model Location {
@@ -95,5 +148,5 @@ model Location {
   country   String // Country
   latitude  Float // Geographical latitude
   longitude Float // Geographical longitude
-  Listing   Listing[]
+  listings  Listing[]
 }

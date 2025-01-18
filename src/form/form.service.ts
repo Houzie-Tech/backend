@@ -1,11 +1,8 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { LocationDto } from './dto/location.dto';
 import { Role } from '@prisma/client';
 
 @Injectable()
@@ -13,17 +10,7 @@ export class FormService {
   constructor(private prisma: PrismaService) {}
 
   async create(createFormDto: CreateFormDto, brokerId: string) {
-    const {
-      city,
-      country,
-      latitude,
-      longitude,
-      state,
-      description,
-      price,
-      title,
-    } = createFormDto;
-
+    // check if the broker exist
     const broker = await this.prisma.user.findFirst({
       where: {
         id: brokerId,
@@ -31,11 +18,68 @@ export class FormService {
       },
     });
     if (!broker) {
-      throw new BadRequestException('Only brokers can create listings');
+      throw new NotFoundException(`Broker #${brokerId} not found`);
     }
+    const { location, ...listingDetails } = createFormDto;
+    const locationDetails = await this.createLocation(location);
 
-    // Create the location first
-    const location = await this.prisma.location.create({
+    // Create a listing
+    const listing = await this.prisma.listing.create({
+      data: {
+        bathrooms: listingDetails.bathrooms,
+        bedrooms: listingDetails.bedrooms,
+        brokerId, // Broker's ID
+        configuration: listingDetails.configuration,
+        description: listingDetails.description,
+        locationId: locationDetails.id,
+        price: listingDetails.price,
+        furnishing: listingDetails.furnishing,
+        propertyType: listingDetails.propertyType,
+        title: listingDetails.title,
+        rentFor: listingDetails.rentFor,
+        photos: listingDetails.photos,
+        rentDetails: listingDetails.rentDetails
+          ? {
+              create: {
+                availableFrom: listingDetails.rentDetails.availableFrom,
+                deposit: listingDetails.rentDetails.deposit,
+                rentAmount: listingDetails.rentDetails.rentAmount,
+              },
+            }
+          : undefined, // Conditionally create rentDetails if provided
+        sellDetails: listingDetails.sellDetails
+          ? {
+              create: {
+                askingPrice: listingDetails.sellDetails.askingPrice,
+              },
+            }
+          : undefined, // Conditionally create sellDetails if provided
+      },
+      include: {
+        location: true, // Optionally include location details in the response
+        rentDetails: true, // Optionally include rentDetails in the response
+        sellDetails: true, // Optionally include sellDetails in the response
+      },
+    });
+    return listing;
+    // attach sell and rent details if available
+  }
+
+  async createLocation(locationDetails: LocationDto) {
+    const { city, state, country, latitude, longitude } = locationDetails;
+
+    // check if location already exists
+    const existingLocation = await this.prisma.location.findFirst({
+      where: {
+        latitude,
+        longitude,
+      },
+    });
+
+    if (existingLocation) {
+      return existingLocation;
+    }
+    await this.prisma.location.create({
       data: {
         city,
         state,
@@ -43,27 +87,8 @@ export class FormService {
         latitude,
         longitude,
       },
-    });
-
-    return this.prisma.listing.create({
-      data: {
-        title,
-        description,
-        price,
-        brokerId: brokerId,
-        locationId: location.id,
-        status: 'PENDING', // Default status
-      },
-      include: {
-        location: true,
-        broker: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
-          },
-        },
+      select: {
+        id: true,
       },
     });
   }
@@ -75,17 +100,16 @@ export class FormService {
     minPrice?: number,
     maxPrice?: number,
   ) {
-    const where = {
-      ...(status && { status }),
-      ...(minPrice && { price: { gte: minPrice } }),
-      ...(maxPrice && { price: { lte: maxPrice } }),
-    };
+    // const where = {
+    //   ...(status && { status }),
+    //   ...(minPrice && { price: { gte: minPrice } }),
+    //   ...(maxPrice && { price: { lte: maxPrice } }),
+    // };
 
     const [listings, total] = await Promise.all([
       this.prisma.listing.findMany({
         skip,
         take,
-        where,
         include: {
           location: true,
           broker: {
@@ -101,7 +125,7 @@ export class FormService {
           createdAt: 'desc',
         },
       }),
-      this.prisma.listing.count({ where }),
+      this.prisma.listing.count(),
     ]);
 
     return {
@@ -182,7 +206,6 @@ export class FormService {
         title: updateFormDto.title,
         description: updateFormDto.description,
         price: updateFormDto.price,
-        status: updateFormDto.status,
       },
       include: {
         location: true,
