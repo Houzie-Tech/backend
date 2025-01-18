@@ -1,68 +1,176 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LocationDto } from './dto/location.dto';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class FormService {
   constructor(private prisma: PrismaService) {}
 
   async create(createFormDto: CreateFormDto, brokerId: string) {
-    // check if the broker exist
-    const broker = await this.prisma.user.findFirst({
-      where: {
-        id: brokerId,
-        role: Role.BROKER,
-      },
-    });
-    if (!broker) {
-      throw new NotFoundException(`Broker #${brokerId} not found`);
-    }
-    const { location, ...listingDetails } = createFormDto;
-    const locationDetails = await this.createLocation(location);
+    try {
+      return await this.prisma.$transaction(
+        async (prisma) => {
+          // Check if broker exists
+          const broker = await prisma.user.findFirst({
+            where: {
+              id: brokerId,
+              role: Role.BROKER,
+            },
+          });
 
-    // Create a listing
-    const listing = await this.prisma.listing.create({
-      data: {
-        bathrooms: listingDetails.bathrooms,
-        bedrooms: listingDetails.bedrooms,
-        brokerId, // Broker's ID
-        configuration: listingDetails.configuration,
-        description: listingDetails.description,
-        locationId: locationDetails.id,
-        price: listingDetails.price,
-        furnishing: listingDetails.furnishing,
-        propertyType: listingDetails.propertyType,
-        title: listingDetails.title,
-        rentFor: listingDetails.rentFor,
-        photos: listingDetails.photos,
-        rentDetails: listingDetails.rentDetails
-          ? {
-              create: {
-                availableFrom: listingDetails.rentDetails.availableFrom,
-                deposit: listingDetails.rentDetails.deposit,
-                rentAmount: listingDetails.rentDetails.rentAmount,
+          if (!broker) {
+            throw new NotFoundException(`Broker #${brokerId} not found`);
+          }
+
+          const { location, ...listingDetails } = createFormDto;
+
+          // Create location within the same transaction
+          const locationDetails = await this.createLocationInTransaction(
+            location,
+            prisma,
+          );
+
+          if (!locationDetails) {
+            throw new InternalServerErrorException(
+              'Failed to create or find location',
+            );
+          }
+
+          // Create the listing with all related records
+          return await prisma.listing.create({
+            data: {
+              bathrooms: listingDetails.bathrooms,
+              bedrooms: listingDetails.bedrooms,
+              brokerId,
+              configuration: listingDetails.configuration,
+              description: listingDetails.description,
+              locationId: locationDetails.id,
+              price: listingDetails.price,
+              furnishing: listingDetails.furnishing,
+              propertyType: listingDetails.propertyType,
+              title: listingDetails.title,
+              rentFor: listingDetails.rentFor,
+              photos: listingDetails.photos,
+              rentDetails: listingDetails.rentDetails && {
+                create: {
+                  availableFrom: listingDetails.rentDetails.availableFrom,
+                  deposit: listingDetails.rentDetails.deposit,
+                  rentAmount: listingDetails.rentDetails.rentAmount,
+                },
               },
-            }
-          : undefined, // Conditionally create rentDetails if provided
-        sellDetails: listingDetails.sellDetails
-          ? {
-              create: {
-                askingPrice: listingDetails.sellDetails.askingPrice,
+              sellDetails: listingDetails.sellDetails && {
+                create: {
+                  askingPrice: listingDetails.sellDetails.askingPrice,
+                },
               },
-            }
-          : undefined, // Conditionally create sellDetails if provided
-      },
-      include: {
-        location: true, // Optionally include location details in the response
-        rentDetails: true, // Optionally include rentDetails in the response
-        sellDetails: true, // Optionally include sellDetails in the response
-      },
-    });
-    return listing;
-    // attach sell and rent details if available
+            },
+            include: {
+              location: true,
+              rentDetails: true,
+              sellDetails: true,
+            },
+          });
+        },
+        {
+          // Transaction configuration
+          maxWait: 5000, // 5s maximum waiting time
+          timeout: 10000, // 10s maximum transaction time
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable, // Highest isolation level
+        },
+      );
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error; // Re-throw NotFoundException as is
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        // Handle specific Prisma errors
+        switch (error.code) {
+          case 'P2002': // Unique constraint violation
+            throw new ConflictException(
+              'A listing with these details already exists',
+            );
+          case 'P2003': // Foreign key constraint failure
+            throw new BadRequestException(
+              'Invalid reference to related record',
+            );
+          case 'P2025': // Record not found
+            throw new NotFoundException('Required record not found');
+          default:
+            throw new InternalServerErrorException(
+              `Database error occurred: ${error.message}`,
+            );
+        }
+      }
+      if (error instanceof Prisma.PrismaClientValidationError) {
+        throw new BadRequestException('Invalid data provided');
+      }
+      // Handle any other unexpected errors
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while creating the listing',
+      );
+    }
+  }
+
+  // Separate method for creating location within a transaction
+  private async createLocationInTransaction(
+    locationDetails: LocationDto,
+    prisma: Prisma.TransactionClient,
+  ) {
+    const { city, state, country, latitude, longitude } = locationDetails;
+
+    try {
+      // Check if location exists
+      const existingLocation = await prisma.location.findFirst({
+        where: {
+          latitude,
+          longitude,
+        },
+      });
+
+      if (existingLocation) {
+        return existingLocation;
+      }
+
+      // Create new location
+      return await prisma.location.create({
+        data: {
+          city,
+          state,
+          country,
+          latitude,
+          longitude,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        switch (error.code) {
+          case 'P2002':
+            // Handle potential race condition where location was created between check and create
+            const location = await prisma.location.findFirst({
+              where: {
+                latitude,
+                longitude,
+              },
+            });
+            if (location) return location;
+            throw new ConflictException('Location already exists');
+          default:
+            throw new InternalServerErrorException(
+              `Failed to create location: ${error.message}`,
+            );
+        }
+      }
+      throw error;
+    }
   }
 
   async createLocation(locationDetails: LocationDto) {
@@ -79,16 +187,15 @@ export class FormService {
     if (existingLocation) {
       return existingLocation;
     }
-    await this.prisma.location.create({
+
+    // Return the newly created location
+    return await this.prisma.location.create({
       data: {
         city,
         state,
         country,
         latitude,
         longitude,
-      },
-      select: {
-        id: true,
       },
     });
   }
