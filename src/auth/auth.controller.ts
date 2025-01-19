@@ -59,15 +59,6 @@ export class AuthController {
     return this.authService.initiatePasswordReset(body.email);
   }
 
-  @Post('password-reset/complete')
-  async resetPassword(@Body() body: any) {
-    return this.authService.resetPassword(
-      body.userId,
-      body.otp,
-      body.newPassword,
-    );
-  }
-
   @UseGuards(AuthGuard)
   @Get('ADMIN')
   adminRoute() {

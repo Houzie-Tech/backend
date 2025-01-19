@@ -7,7 +7,6 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { OTPService } from '../otp/otp.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
 import { OTPType, User } from '@prisma/client';
 import { otp, auth } from './dto';
 import { v4 as uuidv4 } from 'uuid';
@@ -23,11 +22,9 @@ export class AuthService {
   ) {}
 
   async register(registerDto: auth.RegisterAuthDto) {
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
     const user = await this.prisma.user.create({
       data: {
         ...registerDto,
-        password: hashedPassword,
       },
       select: {
         id: true,
@@ -192,20 +189,20 @@ export class AuthService {
     return { message: 'Password reset OTP sent', userId: user.id };
   }
 
-  async resetPassword(userId: string, otp: string, newPassword: string) {
-    const isValid = await this.otpService.verifyOTP(userId, otp, OTPType.EMAIL);
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid OTP');
-    }
+  async resetPassword() {
+    // const isValid = await this.otpService.verifyOTP(userId, otp, OTPType.EMAIL);
+    // if (!isValid) {
+    //   throw new UnauthorizedException('Invalid OTP');
+    // }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
-    });
+    // const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // await this.prisma.user.update({
+    //   where: { id: userId },
+    //   data: { password: hashedPassword },
+    // });
 
-    // Invalidate all refresh tokens
-    await this.prisma.refreshToken.deleteMany({ where: { userId } });
+    // // Invalidate all refresh tokens
+    // await this.prisma.refreshToken.deleteMany({ where: { userId } });
 
     return { message: 'Password reset successful' };
   }
