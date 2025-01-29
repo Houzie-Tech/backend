@@ -1,26 +1,61 @@
-import { Injectable } from '@nestjs/common';
-import { CreateBrokerDto } from './dto/create-broker.dto';
-import { UpdateBrokerDto } from './dto/update-broker.dto';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class BrokerService {
-  create(createBrokerDto: CreateBrokerDto) {
-    return 'This action adds a new broker';
-  }
+  constructor(private prisma: PrismaService) {}
 
   findAll() {
     return `This action returns all broker`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} broker`;
-  }
+  async findOne(brokerId: string) {
+    try {
+      const brokerDetails = await this.prisma.user.findUniqueOrThrow({
+        where: {
+          id: brokerId,
+          role: Role.BROKER,
+        },
+        select: {
+          email: true,
+          phoneNumber: true,
+          isEmailVerified: true,
+          isPhoneVerified: true,
+          name: true,
+          createdAt: true,
+        },
+      });
 
-  update(id: number, updateBrokerDto: UpdateBrokerDto) {
-    return `This action updates a #${id} broker`;
-  }
+      // Ensure the user has the BROKER role
+      if (!brokerDetails) {
+        throw new NotFoundException(`Broker with ID ${brokerId} not found`);
+      }
 
-  remove(id: number) {
-    return `This action removes a #${id} broker`;
+      return brokerDetails;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        // Handle specific Prisma errors
+        switch (error.code) {
+          case 'P2025': // Record not found
+            throw new NotFoundException(`Broker with ID ${brokerId} not found`);
+          default:
+            throw new InternalServerErrorException(
+              `Database error occurred: ${error.message}`,
+            );
+        }
+      } else if (error instanceof NotFoundException) {
+        throw error; // Re-throw NotFoundException as is
+      } else {
+        // Handle unexpected errors
+        throw new InternalServerErrorException(
+          'An unexpected error occurred while fetching broker details',
+        );
+      }
+    }
   }
 }

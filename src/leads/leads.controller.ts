@@ -14,8 +14,10 @@ import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { AuthGuard } from '../auth/guards/jwt.guard';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
+import { Roles } from 'src/auth/decorators/roles.decorator';
 
 @UseGuards(AuthGuard)
+@Roles('ADMIN', 'BROKER')
 @Controller('leads')
 export class LeadsController {
   constructor(private readonly leadsService: LeadsService) {}
@@ -52,7 +54,7 @@ export class LeadsController {
 
   // Remove a lead by ID
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    return this.leadsService.remove(id);
+  async remove(@Param('id') id: string, @GetUser('sub') brokerId: string) {
+    return this.leadsService.remove(id, brokerId);
   }
 }

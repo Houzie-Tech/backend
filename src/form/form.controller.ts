@@ -14,12 +14,13 @@ import { UpdateFormDto } from './dto/update-form.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { AuthGuard } from '../auth/guards/jwt.guard';
 import { ListingFilters } from './dto/find.dto';
+import { Roles } from 'src/auth/decorators/roles.decorator';
 
-@UseGuards(AuthGuard)
 @Controller('listings')
 export class FormController {
   constructor(private readonly formService: FormService) {}
-
+  @UseGuards(AuthGuard)
+  @Roles('BROKER')
   @Post()
   create(@Body() createFormDto: CreateFormDto, @GetUser('sub') userId: string) {
     return this.formService.create(createFormDto, userId);
@@ -35,17 +36,20 @@ export class FormController {
     return this.formService.findOne(id);
   }
 
+  @UseGuards(AuthGuard)
+  @Roles('BROKER')
   @Patch(':id')
   update(
     @Param('id') id: string,
     @Body() updateFormDto: UpdateFormDto,
-    @GetUser('id') userId: string,
+    @GetUser('sub') userId: string,
   ) {
     return this.formService.update(id, updateFormDto, userId);
   }
 
+  @UseGuards(AuthGuard)
   @Delete(':id')
-  remove(@Param('id') id: string, @GetUser('id') userId: string) {
+  remove(@Param('id') id: string, @GetUser('sub') userId: string) {
     return this.formService.remove(id, userId);
   }
 }

@@ -36,7 +36,6 @@ export class AuthGuard implements CanActivate {
 
       // Explicitly type and structure the user object on the request
       request.user = payload;
-      console.log('🚀 ~ AuthGuard ~ canActivate ~ request:', request.user);
     } catch {
       throw new UnauthorizedException();
     }

@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Logger, Get, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Logger,
+  Get,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { OTPService } from '../otp/otp.service';
 import { otp, auth } from './dto';
@@ -9,19 +17,29 @@ export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
   constructor(
-    // eslint-disable-next-line no-unused-vars
     private readonly authService: AuthService,
-    // eslint-disable-next-line no-unused-vars
     private readonly otpService: OTPService,
   ) {}
-
   @Post('register')
   async register(@Body() registerDto: auth.RegisterAuthDto) {
-    const user = await this.authService.register(registerDto);
-    return {
-      message: 'Registration successful. Please verify your email and phone.',
-      user,
-    };
+    try {
+      const user = await this.authService.register(registerDto);
+      return {
+        message: 'Registration successful. Please verify your email and phone.',
+        user,
+      };
+    } catch (error) {
+      // Handle specific error cases
+      if (error.code === 'P2002') {
+        // Prisma unique constraint violation
+        throw new BadRequestException(
+          `A user with this ${error.meta.target} already exists.`,
+        );
+      }
+      throw new BadRequestException(
+        'An error occurred during registration. Please try again.',
+      );
+    }
   }
 
   @Post('login/initiate')

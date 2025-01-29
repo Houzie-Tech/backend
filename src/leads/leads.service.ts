@@ -124,10 +124,10 @@ export class LeadsService {
   }
 
   // Delete a lead
-  async remove(id: string) {
+  async remove(id: string, brokerId: string) {
     try {
       const existingLead = await this.prisma.lead.findUnique({
-        where: { id },
+        where: { id, brokerId },
       });
 
       if (!existingLead) {

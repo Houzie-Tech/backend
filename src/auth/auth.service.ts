@@ -22,29 +22,42 @@ export class AuthService {
   ) {}
 
   async register(registerDto: auth.RegisterAuthDto) {
-    const user = await this.prisma.user.create({
-      data: {
-        ...registerDto,
-      },
-      select: {
-        id: true,
-        email: true,
-        phoneNumber: true,
-        role: true,
-        otps: {
-          select: {
-            code: true,
-            type: true,
-          },
+    try {
+      // Create the user
+      const user = await this.prisma.user.create({
+        data: {
+          ...registerDto,
         },
-      },
-    });
+        select: {
+          id: true,
+          email: true,
+          phoneNumber: true,
+          role: true,
+        },
+      });
 
-    // Send verification OTPs
-    await this.otpService.createOTP(user.id, OTPType.EMAIL);
-    await this.otpService.createOTP(user.id, OTPType.PHONE);
+      // Send verification OTPs
+      await this.otpService.createOTP(user.id, OTPType.EMAIL);
+      await this.otpService.createOTP(user.id, OTPType.PHONE);
 
-    return user;
+      return user;
+    } catch (error) {
+      // Prisma-specific error handling
+      if (error.code === 'P2002') {
+        // Unique constraint violation (e.g., email or phone already exists)
+        throw new Error(
+          `A user with this ${error.meta.target} already exists.`,
+        );
+      }
+
+      // Log the error (optional, for debugging)
+      console.error('Error during registration:', error);
+
+      // Rethrow a generic error for unexpected cases
+      throw new Error(
+        'An error occurred during user registration. Please try again.',
+      );
+    }
   }
 
   async initiateLogin(loginDto: auth.LoginInitiateDto) {

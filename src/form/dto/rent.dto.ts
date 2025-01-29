@@ -9,7 +9,7 @@ export class RentDetails {
   propertyId: string;
 
   @ApiProperty({
-    example: '2025-01-01T00:00:00Z',
+    example: '2025-01-01T00:00:00Z', // ISO 8601 format
     description: 'Date the property is available from',
   })
   @IsISO8601()
@@ -29,7 +29,7 @@ export class RentDetails {
 
 export class RentDetailsUpdate {
   @ApiProperty({
-    example: '2025-01-01T00:00:00Z',
+    example: '2025-01-01T00:00:00Z', // ISO 8601 format
     description: 'Date the property is available from',
   })
   @IsISO8601()

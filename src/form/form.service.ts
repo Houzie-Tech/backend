@@ -39,6 +39,7 @@ export class FormService {
             location,
             prisma,
           );
+          console.log('🚀 ~ FormService ~ locationDetails:', locationDetails);
 
           if (!locationDetails) {
             throw new InternalServerErrorException(
@@ -47,7 +48,7 @@ export class FormService {
           }
 
           // Create the listing with all related records
-          return await prisma.listing.create({
+          const data = await prisma.listing.create({
             data: {
               bathrooms: listingDetails.bathrooms,
               bedrooms: listingDetails.bedrooms,
@@ -80,6 +81,8 @@ export class FormService {
               sellDetails: true,
             },
           });
+
+          return data;
         },
         {
           // Transaction configuration
@@ -299,6 +302,7 @@ export class FormService {
           location: true,
           rentDetails: true,
           sellDetails: true,
+          brokerId: true,
         },
       });
 

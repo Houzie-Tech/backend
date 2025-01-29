@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
@@ -7,14 +8,24 @@ async function bootstrap() {
 
   // Enable CORS
   app.enableCors({
-    origin: '*', // Allows all origins
+    origin: '*', // Allows all origins (Adjust this for production)
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Authorization',
   });
 
+  // Enable ValidationPipe globally
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Removes fields not defined in DTO
+      forbidNonWhitelisted: true, // Throws an error if extra fields are provided
+      transform: true, // Transforms plain objects to DTO instances
+    }),
+  );
+
+  // Swagger configuration
   const config = new DocumentBuilder()
-    .setTitle('Houzie backend docs')
-    .setDescription('')
+    .setTitle('Houzie Backend Docs')
+    .setDescription('API documentation for Houzie backend services')
     .setVersion('1.0')
     .addTag('houzie')
     .addBearerAuth(
@@ -26,12 +37,19 @@ async function bootstrap() {
         description: 'Enter JWT token',
         in: 'header',
       },
-      'JWT-auth', // This name here is important for references
+      'JWT-auth', // Reference name for Bearer Authentication
     )
     .build();
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory);
 
-  await app.listen(process.env.PORT ?? 3001);
+  // Create the Swagger document
+  const document = SwaggerModule.createDocument(app, config);
+
+  // Set up the Swagger UI
+  SwaggerModule.setup('api', app, document);
+
+  // Start the server
+  const port = process.env.PORT || 3001;
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap();
