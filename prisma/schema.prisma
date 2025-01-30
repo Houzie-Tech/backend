@@ -77,6 +77,13 @@ enum LeadSource {
   OTHER
 }
 
+enum Amenities {
+  OWNER_FREE
+  PET_FRIENDLY
+  COUPLE_FRIENDLY
+  BALCONY
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -133,6 +140,10 @@ model Listing {
   rentFor       RentFor[]    @default([]) // Target audience for rental (Bachelor, Family)
   photos        String[] // Array of photo URLs (max 10)
 
+  Security  Float @default(0)
+  Brokerage Float @default(0)
+
+  Amenities   Amenities[]
   rentDetails RentDetails? // Embedded rent details for rental properties
   sellDetails SellDetails? // Embedded sell details for sale properties
 

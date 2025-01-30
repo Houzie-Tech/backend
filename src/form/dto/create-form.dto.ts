@@ -9,7 +9,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { PropertyType, Furnishing, RentFor } from '@prisma/client';
+import { PropertyType, Furnishing, RentFor, Amenities } from '@prisma/client';
 import { RentDetailsUpdate } from './rent.dto';
 import { SellDetailsDto } from './sell-form.dto';
 import { LocationDto } from './location.dto';
@@ -104,4 +104,16 @@ export class CreateFormDto {
   })
   @IsOptional()
   sellDetails?: SellDetailsDto;
+
+  @ApiProperty({ example: ['GYM', 'PARKING'], enum: Amenities, isArray: true })
+  @IsArray()
+  @IsEnum(Amenities, { each: true })
+  @IsOptional()
+  amenities?: Amenities[];
+
+  @ApiProperty({ example: 50000, description: 'Security deposit amount' })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  security: number;
 }

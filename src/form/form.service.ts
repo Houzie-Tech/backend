@@ -54,6 +54,8 @@ export class FormService {
               bedrooms: listingDetails.bedrooms,
               brokerId,
               configuration: listingDetails.configuration,
+              Amenities: listingDetails.amenities,
+              Security: listingDetails.security,
               description: listingDetails.description,
               locationId: locationDetails.id,
               price: listingDetails.price,
