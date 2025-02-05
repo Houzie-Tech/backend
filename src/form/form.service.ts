@@ -305,6 +305,7 @@ export class FormService {
           rentDetails: true,
           sellDetails: true,
           brokerId: true,
+          isActive: true,
         },
       });
 

@@ -139,6 +139,7 @@ model Listing {
   furnishing    Furnishing // Furnishing status
   rentFor       RentFor[]    @default([]) // Target audience for rental (Bachelor, Family)
   photos        String[] // Array of photo URLs (max 10)
+  isActive      Boolean    @default(true)
 
   Security  Float @default(0)
   Brokerage Float @default(0)
@@ -190,12 +191,12 @@ model Location {
 }
 
 model Lead {
-  id             String  @id @default(uuid())
-  name           String
-  email          String? // Optional email contact
-  phoneNumber    String  @unique
-  alternatePhone String? // Secondary contact number
-
+  id                 String         @id @default(uuid())
+  name               String
+  email              String? // Optional email contact
+  phoneNumber        String         @unique
+  alternatePhone     String? // Secondary contact number
+  isActive           Boolean        @default(true)
   // Requirements
   budgetMin          Float
   budgetMax          Float

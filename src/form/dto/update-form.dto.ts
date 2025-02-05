@@ -6,6 +6,7 @@ import {
   IsLatitude,
   IsLongitude,
   IsEnum,
+  IsBoolean,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -65,4 +66,9 @@ export class UpdateFormDto {
   @IsEnum(ListingStatus)
   @IsOptional()
   status?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }
