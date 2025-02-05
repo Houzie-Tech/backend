@@ -21,6 +21,7 @@ export class LeadsService {
       preferredLocations,
       propertyTypes,
       email,
+      note,
     } = createLeadDto;
 
     try {
@@ -34,6 +35,7 @@ export class LeadsService {
           propertyTypes,
           email: email || null,
           brokerId: userId, // Link lead to the broker
+          note,
         },
       });
     } catch (error) {

@@ -48,4 +48,9 @@ export class CreateLeadDto {
   @IsArray()
   @IsEnum(PropertyType, { each: true })
   propertyTypes: PropertyType[];
+
+  @ApiProperty({ description: 'Note of the lead' })
+  @IsString()
+  @IsOptional()
+  note: string;
 }

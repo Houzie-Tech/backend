@@ -215,7 +215,7 @@ model Lead {
 
   // Notes and Requirements
   requirements String? // Detailed requirements text
-  // notes        LeadNote[] // Relationship with notes
+  note        String  @default("")
 
   // Relationships
   brokerId String
@@ -229,13 +229,4 @@ model Lead {
   @@index([phoneNumber])
 }
 
-// model LeadNote {
-//   id        String   @id @default(uuid())
-//   content   String
-//   leadId    String
-//   lead      Lead     @relation(fields: [leadId], references: [id])
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
 
-//   @@index([leadId])
-// }
