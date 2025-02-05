@@ -14,6 +14,8 @@ export class BrokerService {
     return `This action returns all broker`;
   }
 
+  // need to show count of active listin  `gs
+  // show count of active leads
   async findOne(brokerId: string) {
     try {
       const brokerDetails = await this.prisma.user.findUniqueOrThrow({
@@ -56,6 +58,25 @@ export class BrokerService {
           'An unexpected error occurred while fetching broker details',
         );
       }
+    }
+  }
+
+  async getStats(brokerId: string) {
+    try {
+      const [activeListings, inActiveListings, activeLeads, inActiveLeads] =
+        await Promise.all([
+          this.prisma.listing.count({ where: { brokerId, isActive: true } }),
+          this.prisma.listing.count({ where: { brokerId, isActive: false } }),
+          this.prisma.lead.count({ where: { brokerId, isActive: true } }),
+          this.prisma.lead.count({ where: { brokerId, isActive: false } }),
+        ]);
+
+      return { activeListings, inActiveListings, activeLeads, inActiveLeads };
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while fetching stats',
+      );
     }
   }
 }

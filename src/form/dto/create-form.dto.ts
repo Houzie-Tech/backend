@@ -105,6 +105,7 @@ export class CreateFormDto {
   @IsOptional()
   sellDetails?: SellDetailsDto;
 
+  // change
   @ApiProperty({ example: ['GYM', 'PARKING'], enum: Amenities, isArray: true })
   @IsArray()
   @IsEnum(Amenities, { each: true })

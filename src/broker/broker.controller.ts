@@ -1,6 +1,7 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { BrokerService } from './broker.service';
 import { AuthGuard } from 'src/auth/guards/jwt.guard';
+import { GetUser } from 'src/auth/decorators/get-user.decorator';
 
 @Controller('broker')
 export class BrokerController {
@@ -9,6 +10,11 @@ export class BrokerController {
   @Get()
   findAll() {
     return this.brokerService.findAll();
+  }
+  @UseGuards(AuthGuard)
+  @Get('stats')
+  getActiveListings(@GetUser('sub') brokerId: string) {
+    return this.brokerService.getStats(brokerId);
   }
 
   @UseGuards(AuthGuard)
