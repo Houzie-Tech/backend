@@ -306,6 +306,7 @@ export class FormService {
           sellDetails: true,
           brokerId: true,
           isActive: true,
+          photos: true,
         },
       });
 
