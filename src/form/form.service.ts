@@ -442,9 +442,28 @@ export class FormService {
         title: updateFormDto.title,
         description: updateFormDto.description,
         price: updateFormDto.price,
+        isActive: updateFormDto.isActive,
+        bathrooms: updateFormDto.bathrooms,
+        bedrooms: updateFormDto.bedrooms,
+        configuration: updateFormDto.configuration,
+        photos: updateFormDto.photos,
+        rentDetails: updateFormDto.rentDetails && {
+          update: {
+            availableFrom: updateFormDto.rentDetails.availableFrom,
+            deposit: updateFormDto.rentDetails.deposit,
+            rentAmount: updateFormDto.rentDetails.rentAmount,
+          },
+        },
+        sellDetails: updateFormDto.sellDetails && {
+          update: {
+            askingPrice: updateFormDto.sellDetails.askingPrice,
+          },
+        },
       },
       include: {
         location: true,
+        rentDetails: true,
+        sellDetails: true,
         broker: {
           select: {
             id: true,

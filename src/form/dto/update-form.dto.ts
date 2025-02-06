@@ -71,4 +71,60 @@ export class UpdateFormDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiPropertyOptional()
+  @IsNumber()
+  @IsOptional()
+  bathrooms?: number;
+
+  @ApiPropertyOptional()
+  @IsNumber()
+  @IsOptional()
+  bedrooms?: number;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  configuration?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  amenities?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  security?: string[];
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  furnishing?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  propertyType?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  rentFor?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  photos?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  rentDetails?: {
+    availableFrom?: Date;
+    deposit?: number;
+    rentAmount?: number;
+  };
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  sellDetails?: {
+    askingPrice?: number;
+  };
 }
