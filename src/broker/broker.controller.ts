@@ -18,6 +18,12 @@ export class BrokerController {
   }
 
   @UseGuards(AuthGuard)
+  @Get('listings')
+  getListings(@GetUser('sub') brokerId: string) {
+    return this.brokerService.getListingsFromBroker(brokerId);
+  }
+
+  @UseGuards(AuthGuard)
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.brokerService.findOne(id);

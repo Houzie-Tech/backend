@@ -79,4 +79,27 @@ export class BrokerService {
       );
     }
   }
+
+  async getListingsFromBroker(brokerId: string) {
+    try {
+      const listings = await this.prisma.listing.findMany({
+        where: { brokerId },
+        select: {
+          id: true,
+          title: true,
+          location: true,
+          rentDetails: true,
+          sellDetails: true,
+          brokerId: true,
+          isActive: true,
+          photos: true,
+        },
+      });
+
+      return { error: null, data: listings };
+    } catch (error) {
+      console.error('Error fetching listings for broker:', error);
+      return { error: 'Failed to fetch listings', data: [] };
+    }
+  }
 }
