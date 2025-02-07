@@ -89,13 +89,14 @@ export class OTPService {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async sendSMSOTP(phoneNumber: string, code: string): Promise<void> {
     try {
-      await this.twilioClient.messages.create({
-        body: `Your verification code is: ${code}. It will expire in 10 minutes.`,
-        from: this.config.get('TWILIO_PHONE_NUMBER'),
-        to: phoneNumber,
-      });
+      // await this.twilioClient.messages.create({
+      //   body: `Your verification code is: ${code}. It will expire in 10 minutes.`,
+      //   from: this.config.get('TWILIO_PHONE_NUMBER'),
+      //   to: phoneNumber,
+      // });
     } catch (error) {
       this.logger.error(
         `Failed to send OTP SMS to: ${phoneNumber}`,
@@ -111,16 +112,17 @@ export class OTPService {
     }
   }
 
+  // need to chane the otp check to 000000 for now
   async verifyOTP(
     userId: string,
     code: string,
     type: OTPType,
   ): Promise<boolean> {
     try {
+
       const otp = await this.prisma.oTP.findFirst({
         where: {
           userId,
-          code,
           type,
           isUsed: false,
           expiresAt: {
@@ -141,13 +143,17 @@ export class OTPService {
       });
 
       // Update user verification status
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          ...(type === OTPType.EMAIL && { isEmailVerified: true }),
-          ...(type === OTPType.PHONE && { isPhoneVerified: true }),
-        },
-      });
+      // for now add 000000 to the otp check if the user is verified
+      if (code === '000000') {
+        console.log('Updating user verification status');
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: {
+            ...(type === OTPType.EMAIL && { isEmailVerified: true }),
+            ...(type === OTPType.PHONE && { isPhoneVerified: true }),
+          },
+        });
+      }
 
       return true;
     } catch (error) {
