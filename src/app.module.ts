@@ -3,14 +3,14 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConfigModule } from '@nestjs/config';
 import { FormModule } from './form/form.module';
-import { BrokerModule } from './broker/broker.module';
 import { LeadsModule } from './leads/leads.module';
+import { BrokerModule } from './broker/broker.module';
 @Module({
   imports: [
     PrismaModule,
     AuthModule,
     ConfigModule.forRoot({
-      isGlobal: true, // Makes config accessible everywhere
+      isGlobal: true,
       envFilePath: '../.env',
     }),
     FormModule,

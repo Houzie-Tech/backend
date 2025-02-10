@@ -26,20 +26,33 @@ export class RegisterAuthDto {
   email: string;
 
   @ApiProperty({
-    description: 'Mobile phone number',
-    example: '+919876543210',
+    description: 'Password (required for normal login, optional for OAuth)',
+    example: 'StrongP@ssw0rd!',
+    required: false,
   })
-  @IsMobilePhone('en-IN', {}, { message: 'Invalid mobile phone number.' })
-  @IsNotEmpty({ message: 'Phone number is required.' })
-  phoneNumber: string;
+  @ValidateIf((o) => !o.provider)
+  @IsString({ message: 'Password must be a string.' })
+  @IsNotEmpty({ message: 'Password is required for normal registration.' })
+  @IsOptional()
+  password?: string;
 
   @ApiProperty({
-    description: 'Aadhar number of the user',
+    description: 'Mobile phone number (optional for OAuth users)',
+    example: '+919876543210',
+    required: false,
+  })
+  @IsMobilePhone('en-IN', {}, { message: 'Invalid mobile phone number.' })
+  @IsOptional()
+  phoneNumber?: string;
+
+  @ApiProperty({
+    description: 'Aadhar number (optional for OAuth users)',
     example: '123456781234',
+    required: false,
   })
   @IsString({ message: 'Aadhar number must be a string.' })
-  @IsNotEmpty({ message: 'Aadhar number is required.' })
-  aadharNumber: string;
+  @IsOptional()
+  aadharNumber?: string;
 
   @ApiProperty({
     enum: Role,
@@ -49,6 +62,24 @@ export class RegisterAuthDto {
   @IsEnum(Role, { message: 'Invalid role value.' })
   @IsNotEmpty({ message: 'Role is required.' })
   role: Role;
+
+  @ApiProperty({
+    description: 'OAuth provider (Google, GitHub, etc.)',
+    example: 'google',
+    required: false,
+  })
+  @IsString({ message: 'Provider must be a string.' })
+  @IsOptional()
+  provider?: string;
+
+  @ApiProperty({
+    description: 'OAuth provider ID (only for OAuth users)',
+    example: '11223344556677889900',
+    required: false,
+  })
+  @IsString({ message: 'Provider ID must be a string.' })
+  @IsOptional()
+  providerId?: string;
 }
 
 export class LoginInitiateDto {
@@ -57,7 +88,7 @@ export class LoginInitiateDto {
     example: 'john.doe@example.com',
     required: false,
   })
-  @ValidateIf((o) => !o.phoneNumber)
+  @ValidateIf((o) => !o.phoneNumber && !o.provider)
   @IsEmail({}, { message: 'Invalid email format.' })
   @IsOptional()
   email?: string;
@@ -67,10 +98,41 @@ export class LoginInitiateDto {
     example: '+919876543210',
     required: false,
   })
-  @ValidateIf((o) => !o.email)
+  @ValidateIf((o) => !o.email && !o.provider)
   @IsPhoneNumber(null, { message: 'Invalid phone number format.' })
   @IsOptional()
   phoneNumber?: string;
+
+  @ApiProperty({
+    description: 'Password (required for normal login, not required for OAuth)',
+    example: 'StrongP@ssw0rd!',
+    required: false,
+  })
+  @ValidateIf((o) => !o.provider)
+  @IsString({ message: 'Password must be a string.' })
+  @IsNotEmpty({ message: 'Password is required for normal login.' })
+  @IsOptional()
+  password?: string;
+
+  @ApiProperty({
+    description: 'OAuth provider (Google, GitHub, etc.)',
+    example: 'google',
+    required: false,
+  })
+  @ValidateIf((o) => !o.email && !o.phoneNumber)
+  @IsString({ message: 'Provider must be a string.' })
+  @IsOptional()
+  provider?: string;
+
+  @ApiProperty({
+    description: 'OAuth provider ID (only for OAuth users)',
+    example: '11223344556677889900',
+    required: false,
+  })
+  @ValidateIf((o) => o.provider)
+  @IsString({ message: 'Provider ID must be a string.' })
+  @IsOptional()
+  providerId?: string;
 }
 
 export class RefreshDto {

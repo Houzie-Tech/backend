@@ -3,6 +3,9 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { OTPService } from '../otp/otp.service';
 import { JwtModule } from '@nestjs/jwt';
+import { GoogleStrategy } from './strategy/google.strategy';
+import { PassportModule } from '@nestjs/passport';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -10,8 +13,10 @@ import { JwtModule } from '@nestjs/jwt';
       global: true,
       secret: process.env.JWT_SECRET,
     }),
+    ConfigModule,
+    PassportModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, OTPService],
+  providers: [AuthService, OTPService, GoogleStrategy],
 })
 export class AuthModule {}

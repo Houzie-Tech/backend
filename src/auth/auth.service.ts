@@ -2,14 +2,18 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OTPService } from '../otp/otp.service';
 import { JwtService } from '@nestjs/jwt';
-import { OTPType, User } from '@prisma/client';
+import { $Enums, OTPType, Role } from '@prisma/client';
 import { otp, auth } from './dto';
 import { v4 as uuidv4 } from 'uuid';
+import * as bcrypt from 'bcrypt';
+import { LoginEmailDto } from './dto/email_pw.dto';
 
 //TODO implement timeout for email and otp
 
@@ -22,89 +26,286 @@ export class AuthService {
   ) {}
 
   async register(registerDto: auth.RegisterAuthDto) {
+    const logger = new Logger('AuthService.register');
+
     try {
-      // Create the user
+      const {
+        provider,
+        providerId,
+        password,
+        email,
+        phoneNumber,
+        aadharNumber,
+        ...userData
+      } = registerDto;
+
+      // Check for existing user with the same email, phone number, or aadhar number.
+      const uniqueConditions = [];
+      if (email) uniqueConditions.push({ email });
+      if (phoneNumber) uniqueConditions.push({ phoneNumber });
+      if (aadharNumber) uniqueConditions.push({ aadharNumber });
+
+      if (uniqueConditions.length) {
+        const existingUser = await this.prisma.user.findFirst({
+          where: { OR: uniqueConditions },
+        });
+        if (existingUser) {
+          throw new BadRequestException({
+            status: 'fail',
+            message:
+              'A user with the provided email, phone number, or aadhar number already exists.',
+          });
+        }
+      }
+
+      // For regular registrations, hash the password.
+      let hashedPassword: string | null = null;
+      if (!provider && password) {
+        hashedPassword = await bcrypt.hash(password, 10);
+      }
+
+      // Create the user and associated authentication details.
       const user = await this.prisma.user.create({
         data: {
-          ...registerDto,
+          email,
+          phoneNumber,
+          aadharNumber,
+          ...userData,
+          userAuth: {
+            create: {
+              provider: provider || null,
+              providerId: providerId || null,
+              password: hashedPassword, // Will be null for OAuth registrations.
+            },
+          },
         },
         select: {
           id: true,
+          name: true,
           email: true,
           phoneNumber: true,
           role: true,
+          userAuth: {
+            select: {
+              id: true,
+              provider: true,
+              providerId: true,
+            },
+          },
         },
       });
 
-      // Send verification OTPs
-      await this.otpService.createOTP(user.id, OTPType.EMAIL);
-      await this.otpService.createOTP(user.id, OTPType.PHONE);
+      logger.log(`User created with id: ${user.id}`);
 
-      return user;
+      // For non-OAuth registrations, send verification OTPs if email and/or phone number are provided.
+      if (!provider) {
+        const otpPromises = [];
+        if (email) {
+          otpPromises.push(
+            this.otpService.createOTP(user.userAuth.id, OTPType.EMAIL),
+          );
+        }
+        if (phoneNumber) {
+          otpPromises.push(
+            this.otpService.createOTP(user.userAuth.id, OTPType.PHONE),
+          );
+        }
+        if (otpPromises.length > 0) {
+          await Promise.all(otpPromises);
+        }
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { userAuth, ...data } = user;
+
+      return {
+        status: 'success',
+        data: {
+          user: data,
+        },
+      };
     } catch (error) {
-      // Prisma-specific error handling
+      logger.error('Error during user registration', error.stack);
+
+      // Handle Prisma unique constraint violation
       if (error.code === 'P2002') {
-        // Unique constraint violation (e.g., email or phone already exists)
-        throw new Error(
-          `A user with this ${error.meta.target} already exists.`,
-        );
+        throw new BadRequestException({
+          status: 'fail',
+          message: `A user with this ${error.meta.target} already exists.`,
+        });
       }
 
-      // Log the error (optional, for debugging)
-      console.error('Error during registration:', error);
+      // If it's already a NestJS exception, rethrow it
+      if (
+        error instanceof BadRequestException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
 
-      // Rethrow a generic error for unexpected cases
-      throw new Error(
-        'An error occurred during user registration. Please try again.',
-      );
+      throw new InternalServerErrorException({
+        status: 'error',
+        message:
+          'An error occurred during user registration. Please try again.',
+      });
     }
   }
 
-  async initiateLogin(loginDto: auth.LoginInitiateDto) {
-    // Validate that either email or phone is provided, but not both
-    if (
-      (!loginDto.email && !loginDto.phoneNumber) ||
-      (loginDto.email && loginDto.phoneNumber)
-    ) {
-      throw new BadRequestException('Provide either email or phone number');
-    }
+  async loginEmail(loginDto: LoginEmailDto) {
+    const logger = new Logger('AuthService.loginEmail');
 
-    let user: User;
-    if (loginDto.email) {
-      user = await this.prisma.user.findUnique({
+    try {
+      const user = await this.prisma.user.findUnique({
         where: { email: loginDto.email },
+        select: {
+          id: true,
+          userAuth: {
+            select: {
+              id: true,
+              password: true,
+              isEmailVerified: true,
+              isPhoneVerified: true,
+            },
+          },
+          email: true,
+          phoneNumber: true,
+          name: true,
+          role: true,
+          aadharNumber: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
-    } else {
-      user = await this.prisma.user.findUnique({
-        where: { phoneNumber: loginDto.phoneNumber },
+      if (!user) {
+        throw new UnauthorizedException({
+          status: 'fail',
+          message: 'Invalid email or password',
+        });
+      }
+
+      const isPasswordValid = await bcrypt.compare(
+        loginDto.password,
+        user.userAuth.password,
+      );
+      if (!isPasswordValid) {
+        throw new UnauthorizedException({
+          status: 'fail',
+          message: 'Invalid email or password',
+        });
+      }
+
+      const tokens = await this.generateTokens(user);
+
+      return {
+        status: 'success',
+        message: 'Login successful',
+        ...tokens,
+      };
+    } catch (error) {
+      logger.error('Error during login', error.stack);
+
+      // If it's already a NestJS exception, rethrow it
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException({
+        status: 'error',
+        message: 'An error occurred during login. Please try again.',
       });
     }
+  }
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+  async initiateOtp(loginInitiateDto: otp.InitiateOtpDto) {
+    const logger = new Logger('AuthService.initateOtp');
+
+    try {
+      // Validate that either email OR phone number is provided, but not both.
+      if (
+        (!loginInitiateDto.email && !loginInitiateDto.phoneNumber) ||
+        (loginInitiateDto.email && loginInitiateDto.phoneNumber)
+      ) {
+        throw new BadRequestException({
+          message: 'Provide either email or phone number, but not both.',
+        });
+      }
+
+      let user;
+      let otp;
+      let loginMethod = '';
+
+      if (loginInitiateDto.email) {
+        // Retrieve the user based on email.
+        user = await this.prisma.user.findUnique({
+          where: { email: loginInitiateDto.email },
+          select: {
+            id: true,
+            userAuth: { select: { id: true, isEmailVerified: true } },
+          },
+        });
+        if (!user) {
+          throw new UnauthorizedException({
+            message: 'Invalid email or OTP',
+          });
+        }
+        // Create and send email OTP.
+        otp = await this.otpService.createOTP(user.userAuth.id, OTPType.EMAIL);
+        await this.otpService.sendEmailOTP(loginInitiateDto.email, otp);
+        loginMethod = 'email';
+      } else if (loginInitiateDto.phoneNumber) {
+        // Retrieve the user based on phone number.
+        user = await this.prisma.user.findUnique({
+          where: { phoneNumber: loginInitiateDto.phoneNumber },
+          select: {
+            id: true,
+            userAuth: { select: { id: true, isEmailVerified: true } },
+          },
+        });
+        if (!user) {
+          throw new UnauthorizedException({
+            message: 'Invalid phone number or OTP',
+          });
+        }
+        // Create and send SMS OTP.
+        otp = await this.otpService.createOTP(user.userAuth.id, OTPType.PHONE);
+        await this.otpService.sendSMSOTP(loginInitiateDto.phoneNumber, otp);
+        loginMethod = 'phone';
+      }
+
+      return {
+        status: 'success',
+        message: `OTP sent to your ${loginMethod}`,
+        userId: user.id,
+        loginMethod,
+      };
+    } catch (error) {
+      logger.error('Error during login', error.stack);
+
+      throw new InternalServerErrorException({
+        status: 'error',
+        message: 'An error occurred during login. Please try again.',
+      });
     }
-
-    // Generate OTP based on login method
-    const otpType = loginDto.email ? OTPType.EMAIL : OTPType.PHONE;
-    const otp = await this.otpService.createOTP(user.id, otpType);
-
-    // Send OTP based on login method
-    if (loginDto.email) {
-      await this.otpService.sendEmailOTP(user.email, otp);
-    } else {
-      await this.otpService.sendSMSOTP(user.phoneNumber, otp);
-    }
-
-    return {
-      message: `OTP sent to your ${loginDto.email ? 'email' : 'phone'}`,
-      userId: user.id,
-      loginMethod: loginDto.email ? 'email' : 'phone',
-    };
   }
 
   async verifyLoginOTP(verifyDto: otp.VerifyOtpDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: verifyDto.userId },
+      select: {
+        id: true,
+        email: true,
+        phoneNumber: true,
+        role: true,
+        userAuth: {
+          select: {
+            id: true,
+            isEmailVerified: true,
+            isPhoneVerified: true,
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -113,52 +314,117 @@ export class AuthService {
 
     // Try both OTP types since we don't know which one was used
     const isEmailValid = await this.otpService
-      .verifyOTP(verifyDto.userId, verifyDto.otp, OTPType.EMAIL)
+      .verifyOTP(user.userAuth.id, verifyDto.otp, OTPType.EMAIL)
       .catch(() => false);
 
     const isPhoneValid = await this.otpService
-      .verifyOTP(verifyDto.userId, verifyDto.otp, OTPType.PHONE)
+      .verifyOTP(user.userAuth.id, verifyDto.otp, OTPType.PHONE)
       .catch(() => false);
 
     if (!isEmailValid && !isPhoneValid) {
       throw new UnauthorizedException('Invalid OTP');
     }
-
-    // Generate tokens after successful verification
-    return this.generateTokens(user);
-  }
-
-  // Todo Change the data type from any
-  async refreshTokens(refreshToken: string): Promise<any> {
-    const token = await this.prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
-      include: { user: true },
+    // Update user verification status based on OTP type
+    await this.prisma.userAuth.update({
+      where: { id: user.userAuth.id },
+      data: {
+        isEmailVerified: isEmailValid ? true : undefined,
+        isPhoneVerified: isPhoneValid ? true : undefined,
+      },
     });
 
-    if (!token || token.expires < new Date()) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
+    const fullUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        userAuth: true,
+      },
+    });
 
-    // Delete the used refresh token
-    await this.prisma.refreshToken.delete({ where: { id: token.id } });
-
-    // Generate new tokens
-    return this.generateTokens(token.user);
+    return this.generateTokens(fullUser);
   }
 
-  private async generateTokens(user: User) {
+  async loginWithGoogle(googleUser: any) {
+    // Try finding an existing user using the email
+    let existingUser = await this.prisma.user.findUnique({
+      where: { email: googleUser.email },
+    });
+
+    // If user doesn't exist, create a new record
+    if (!existingUser) {
+      existingUser = await this.prisma.user.create({
+        data: {
+          email: googleUser.email,
+          name: `${googleUser.firstName}`,
+          role: Role.RENTER,
+          // Populate other fields if needed.
+          userAuth: {
+            create: {
+              provider: googleUser.provider,
+              providerId: googleUser.providerId,
+              password: null, // No password for OAuth
+            },
+          },
+        },
+      });
+    }
+
+    const fullUser = await this.prisma.user.findUnique({
+      where: { id: existingUser.id },
+      include: {
+        userAuth: true,
+      },
+    });
+
+    const tokens = await this.generateTokens(fullUser);
+    return tokens;
+  }
+
+  async refreshTokens(refreshToken: string) {
+    const decoded = this.jwtService.verify(refreshToken);
+    const user = await this.prisma.user.findUnique({
+      where: { id: decoded.sub },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const fullUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        userAuth: true,
+      },
+    });
+    const tokens = await this.generateTokens(fullUser);
+    return tokens;
+  }
+
+  private async generateTokens(user: {
+    email: string;
+    role: $Enums.Role;
+    id: string;
+    userAuth: {
+      isEmailVerified: boolean;
+      isPhoneVerified: boolean;
+      password: string;
+      id: string;
+    };
+    phoneNumber: string;
+    aadharNumber: string;
+    name: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
         {
           sub: user.id,
           email: user.email,
           role: user.role,
-          isEmailVerified: user.isEmailVerified,
-          isPhoneVerified: user.isPhoneVerified,
+          isEmailVerified: user.userAuth?.isEmailVerified,
+          isPhoneVerified: user.userAuth?.isPhoneVerified,
         },
         { expiresIn: '15m' },
       ),
-      this.generateRefreshToken(user.id),
+      this.generateRefreshToken(user.userAuth.id),
     ]);
 
     return {
@@ -169,12 +435,10 @@ export class AuthService {
         email: user.email,
         phoneNumber: user.phoneNumber,
         role: user.role,
-        isEmailVerified: user.isEmailVerified,
-        isPhoneVerified: user.isPhoneVerified,
       },
     };
   }
-  private async generateRefreshToken(userId: string): Promise<string> {
+  private async generateRefreshToken(userAuthId: string): Promise<string> {
     const token = uuidv4();
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
@@ -182,41 +446,10 @@ export class AuthService {
       data: {
         token,
         expires,
-        userId,
+        userAuthId,
       },
     });
 
     return token;
-  }
-
-  async initiatePasswordReset(email: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    // Send OTP for password reset
-    const otp = await this.otpService.createOTP(user.id, OTPType.EMAIL);
-    await this.otpService.sendEmailOTP(email, otp);
-
-    return { message: 'Password reset OTP sent', userId: user.id };
-  }
-
-  async resetPassword() {
-    // const isValid = await this.otpService.verifyOTP(userId, otp, OTPType.EMAIL);
-    // if (!isValid) {
-    //   throw new UnauthorizedException('Invalid OTP');
-    // }
-
-    // const hashedPassword = await bcrypt.hash(newPassword, 10);
-    // await this.prisma.user.update({
-    //   where: { id: userId },
-    //   data: { password: hashedPassword },
-    // });
-
-    // // Invalidate all refresh tokens
-    // await this.prisma.refreshToken.deleteMany({ where: { userId } });
-
-    return { message: 'Password reset successful' };
   }
 }

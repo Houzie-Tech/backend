@@ -26,8 +26,6 @@ export class BrokerService {
         select: {
           email: true,
           phoneNumber: true,
-          isEmailVerified: true,
-          isPhoneVerified: true,
           name: true,
           createdAt: true,
         },

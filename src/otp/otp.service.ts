@@ -59,7 +59,7 @@ export class OTPService {
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
       await this.prisma.oTP.create({
-        data: { code, type, expiresAt, userId },
+        data: { code, type, expiresAt, userAuthId: userId },
       });
 
       return code;
@@ -119,10 +119,9 @@ export class OTPService {
     type: OTPType,
   ): Promise<boolean> {
     try {
-
       const otp = await this.prisma.oTP.findFirst({
         where: {
-          userId,
+          userAuthId: userId,
           type,
           isUsed: false,
           expiresAt: {

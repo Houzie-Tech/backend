@@ -88,18 +88,36 @@ model User {
   id           String   @id @default(uuid())
   name         String
   email        String   @unique
-  phoneNumber  String   @unique
-  aadharNumber String   @unique
+  phoneNumber  String?  @unique
+  aadharNumber String?  @unique
   role         Role
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  isEmailVerified Boolean        @default(false)
-  isPhoneVerified Boolean        @default(false)
-  otps            OTP[]
-  refreshTokens   RefreshToken[]
-  listings        Listing[] // Relationship with listings
-  Lead            Lead[]
+  listings Listing[]
+  Lead     Lead[]
+  userAuth UserAuth?
+}
+
+model UserAuth {
+  id              String  @id @default(uuid())
+  password        String?
+  isEmailVerified Boolean @default(false)
+  isPhoneVerified Boolean @default(false)
+  provider        String?
+  providerId      String? @unique
+  accessToken     String?
+
+  otps          OTP[]
+  refreshTokens RefreshToken[]
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provider, providerId])
 }
 
 model OTP {
@@ -109,22 +127,22 @@ model OTP {
   expiresAt DateTime
   isUsed    Boolean  @default(false)
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  createdAt  DateTime  @default(now())
+  UserAuth   UserAuth? @relation(fields: [userAuthId], references: [id])
+  userAuthId String?
 
-  @@index([userId])
+  @@index([userAuthId])
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  expires   DateTime
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  id         String    @id @default(uuid())
+  token      String    @unique
+  expires    DateTime
+  createdAt  DateTime  @default(now())
+  UserAuth   UserAuth? @relation(fields: [userAuthId], references: [id])
+  userAuthId String?
 
-  @@index([userId])
+  @@index([userAuthId])
 }
 
 model Listing {
@@ -139,7 +157,7 @@ model Listing {
   furnishing    Furnishing // Furnishing status
   rentFor       RentFor[]    @default([]) // Target audience for rental (Bachelor, Family)
   photos        String[] // Array of photo URLs (max 10)
-  isActive      Boolean    @default(true)
+  isActive      Boolean      @default(true)
 
   Security  Float @default(0)
   Brokerage Float @default(0)
@@ -215,7 +233,7 @@ model Lead {
 
   // Notes and Requirements
   requirements String? // Detailed requirements text
-  note        String  @default("")
+  note         String  @default("")
 
   // Relationships
   brokerId String
@@ -228,5 +246,3 @@ model Lead {
 
   @@index([phoneNumber])
 }
-
-
