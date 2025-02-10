@@ -129,7 +129,6 @@ export class OTPService {
           },
         },
       });
-
       if (!otp) {
         this.logger.warn(`OTP verification failed for user: ${userId}`);
         throw new BadRequestException(ERROR_MESSAGES.OTP_VERIFICATION_FAILED);
@@ -145,12 +144,10 @@ export class OTPService {
       // for now add 000000 to the otp check if the user is verified
       if (code === '000000') {
         console.log('Updating user verification status');
-        await this.prisma.user.update({
-          where: { id: userId },
-          data: {
-            ...(type === OTPType.EMAIL && { isEmailVerified: true }),
-            ...(type === OTPType.PHONE && { isPhoneVerified: true }),
-          },
+        // Mark OTP as used
+        await this.prisma.oTP.update({
+          where: { id: otp.id },
+          data: { isUsed: true },
         });
       }
 
