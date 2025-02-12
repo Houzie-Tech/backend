@@ -9,8 +9,7 @@ import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LocationDto } from './dto/location.dto';
-import { Prisma, Role } from '@prisma/client';
-import { ListingFilters } from './dto/find.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class FormService {
@@ -20,18 +19,6 @@ export class FormService {
     try {
       return await this.prisma.$transaction(
         async (prisma) => {
-          // Check if broker exists
-          const broker = await prisma.user.findFirst({
-            where: {
-              id: brokerId,
-              role: Role.BROKER,
-            },
-          });
-
-          if (!broker) {
-            throw new NotFoundException(`Broker #${brokerId} not found`);
-          }
-
           const { location, ...listingDetails } = createFormDto;
 
           // Create location within the same transaction
@@ -39,8 +26,7 @@ export class FormService {
             location,
             prisma,
           );
-          console.log('🚀 ~ FormService ~ locationDetails:', locationDetails);
-
+          console.log('locationDetails', locationDetails);
           if (!locationDetails) {
             throw new InternalServerErrorException(
               'Failed to create or find location',
@@ -50,40 +36,20 @@ export class FormService {
           // Create the listing with all related records
           const data = await prisma.listing.create({
             data: {
-              bathrooms: listingDetails.bathrooms,
-              bedrooms: listingDetails.bedrooms,
-              brokerId,
-              configuration: listingDetails.configuration,
-              Amenities: listingDetails.amenities,
-              Security: listingDetails.security,
-              description: listingDetails.description,
-              locationId: locationDetails.id,
-              price: listingDetails.price,
-              furnishing: listingDetails.furnishing,
-              propertyType: listingDetails.propertyType,
-              title: listingDetails.title,
-              rentFor: listingDetails.rentFor,
-              photos: listingDetails.photos,
-              rentDetails: listingDetails.rentDetails && {
-                create: {
-                  availableFrom: listingDetails.rentDetails.availableFrom,
-                  deposit: listingDetails.rentDetails.deposit,
-                  rentAmount: listingDetails.rentDetails.rentAmount,
+              ...listingDetails,
+              location: {
+                connect: {
+                  id: locationDetails.id,
                 },
               },
-              sellDetails: listingDetails.sellDetails && {
-                create: {
-                  askingPrice: listingDetails.sellDetails.askingPrice,
+              broker: {
+                connect: {
+                  id: brokerId,
                 },
               },
-            },
-            include: {
-              location: true,
-              rentDetails: true,
-              sellDetails: true,
             },
           });
-
+          console.log('data', data);
           return data;
         },
         {
@@ -94,6 +60,7 @@ export class FormService {
         },
       );
     } catch (error) {
+      console.log('error', error);
       if (error instanceof NotFoundException) {
         throw error; // Re-throw NotFoundException as is
       }
@@ -205,7 +172,7 @@ export class FormService {
     });
   }
 
-  async findAll(filters: ListingFilters) {
+  async findAll(filters: any) {
     try {
       const {
         minPrice,
@@ -214,13 +181,10 @@ export class FormService {
         maxBedrooms,
         minBathrooms,
         maxBathrooms,
-        furnishing,
         propertyType,
         latitude,
         longitude,
         distanceInKm = 10,
-        minAskingPrice,
-        maxAskingPrice,
         page = 1,
         limit = 10,
       } = filters;
@@ -250,23 +214,9 @@ export class FormService {
         };
       }
 
-      if (furnishing?.length) {
-        where.furnishing = { in: furnishing };
-      }
-
       if (propertyType?.length) {
         where.propertyType = { in: propertyType };
       }
-
-      if (minAskingPrice || maxAskingPrice) {
-        where.sellDetails = {
-          askingPrice: {
-            gte: minAskingPrice,
-            lte: maxAskingPrice,
-          },
-        };
-      }
-
       // Location range filter using a more generous bounding box
       if (latitude !== undefined && longitude !== undefined) {
         // Use a slightly larger bounding box to account for Earth's curvature
@@ -302,8 +252,6 @@ export class FormService {
         select: {
           id: true,
           location: true,
-          rentDetails: true,
-          sellDetails: true,
           brokerId: true,
           isActive: true,
           photos: true,
@@ -404,9 +352,6 @@ export class FormService {
         id,
         brokerId: userId,
       },
-      include: {
-        location: true,
-      },
     });
 
     if (!existingListing) {
@@ -415,55 +360,16 @@ export class FormService {
       );
     }
 
-    // Update location if provided
-    if (
-      updateFormDto.city ||
-      updateFormDto.state ||
-      updateFormDto.country ||
-      updateFormDto.latitude ||
-      updateFormDto.longitude
-    ) {
-      await this.prisma.location.update({
-        where: { id: existingListing.locationId },
-        data: {
-          city: updateFormDto.city,
-          state: updateFormDto.state,
-          country: updateFormDto.country,
-          latitude: updateFormDto.latitude,
-          longitude: updateFormDto.longitude,
-        },
-      });
-    }
+    // Destructure to remove location from update data
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { location, ...listingData } = updateFormDto;
 
-    // Update listing
+    // Update listing without location
     return this.prisma.listing.update({
       where: { id },
-      data: {
-        title: updateFormDto.title,
-        description: updateFormDto.description,
-        price: updateFormDto.price,
-        isActive: updateFormDto.isActive,
-        bathrooms: updateFormDto.bathrooms,
-        bedrooms: updateFormDto.bedrooms,
-        configuration: updateFormDto.configuration,
-        photos: updateFormDto.photos,
-        rentDetails: updateFormDto.rentDetails && {
-          update: {
-            availableFrom: updateFormDto.rentDetails.availableFrom,
-            deposit: updateFormDto.rentDetails.deposit,
-            rentAmount: updateFormDto.rentDetails.rentAmount,
-          },
-        },
-        sellDetails: updateFormDto.sellDetails && {
-          update: {
-            askingPrice: updateFormDto.sellDetails.askingPrice,
-          },
-        },
-      },
+      data: listingData,
       include: {
         location: true,
-        rentDetails: true,
-        sellDetails: true,
         broker: {
           select: {
             id: true,

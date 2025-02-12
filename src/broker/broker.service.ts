@@ -86,8 +86,6 @@ export class BrokerService {
           id: true,
           title: true,
           location: true,
-          rentDetails: true,
-          sellDetails: true,
           brokerId: true,
           isActive: true,
           photos: true,

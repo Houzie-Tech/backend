@@ -7,11 +7,19 @@ import {
   ArrayMaxSize,
   IsOptional,
   IsEnum,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { PropertyType, Furnishing, RentFor, Amenities } from '@prisma/client';
-import { RentDetailsUpdate } from './rent.dto';
-import { SellDetailsDto } from './sell-form.dto';
+import {
+  PropertyType,
+  Furnishing,
+  PreferredTenant,
+  Amenities,
+  Features,
+  SharingType,
+  Configuration,
+  LockInPeriod,
+} from '@prisma/client';
 import { LocationDto } from './location.dto';
 
 export class CreateFormDto {
@@ -25,15 +33,12 @@ export class CreateFormDto {
   @IsNotEmpty()
   description: string;
 
-  @ApiProperty({
-    example: {
-      city: 'Mumbai',
-      state: 'Maharashtra',
-      country: 'India',
-      latitude: 19.076,
-      longitude: 72.8777,
-    },
-  })
+  @ApiProperty({ example: 'FLAT_APARTMENT', enum: PropertyType })
+  @IsEnum(PropertyType)
+  @IsNotEmpty()
+  propertyType: PropertyType;
+
+  @ApiProperty()
   @IsNotEmpty()
   location: LocationDto;
 
@@ -42,79 +47,144 @@ export class CreateFormDto {
   @Min(0)
   price: number;
 
-  @ApiProperty({ example: 'FLAT_APARTMENT', enum: PropertyType })
-  @IsEnum(PropertyType)
-  @IsNotEmpty()
-  propertyType: PropertyType;
+  @ApiProperty({ example: 50000 })
+  @IsNumber()
+  @Min(0)
+  security: number;
 
-  @ApiProperty({ example: '2BHK' })
+  @ApiProperty({ example: 5000 })
+  @IsNumber()
+  @Min(0)
+  brokerage: number;
+
+  @ApiProperty()
+  @IsBoolean()
+  @IsOptional()
+  isNegotiable?: boolean;
+
+  @ApiProperty({ enum: LockInPeriod })
+  @IsEnum(LockInPeriod)
+  @IsOptional()
+  lockInPeriod?: LockInPeriod;
+
+  @ApiProperty()
   @IsString()
-  @IsNotEmpty()
-  configuration: string;
+  @IsOptional()
+  availableFrom?: string;
 
-  @ApiProperty({ example: 2 })
+  // Builder Floor, Flat/Apartment, Villa specific
+  @ApiProperty({ enum: Configuration })
+  @IsEnum(Configuration)
+  @IsOptional()
+  configuration?: Configuration;
+
+  @ApiProperty()
   @IsNumber()
-  @Min(0)
-  bedrooms: number;
+  @IsOptional()
+  bedrooms?: number;
 
-  @ApiProperty({ example: 2 })
+  @ApiProperty()
   @IsNumber()
-  @Min(0)
-  bathrooms: number;
+  @IsOptional()
+  bathrooms?: number;
 
-  @ApiProperty({ example: 'FULLY_FURNISHED', enum: Furnishing })
+  @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  balconies?: number;
+
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  floorNumber?: string;
+
+  @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  totalFloors?: number;
+
+  @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  maintenanceCharges?: number;
+
+  @ApiProperty()
+  @IsBoolean()
+  @IsOptional()
+  isMaintenanceIncluded?: boolean;
+
+  // Co-living/PG specific
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  roomType?: string;
+
+  @ApiProperty({ enum: SharingType })
+  @IsEnum(SharingType)
+  @IsOptional()
+  sharingType?: SharingType;
+
+  @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  unitsAvailable?: number;
+
+  @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  roomSize?: number;
+
+  // Furnishing details
+  @ApiProperty({ enum: Furnishing })
   @IsEnum(Furnishing)
-  @IsNotEmpty()
-  furnishing: Furnishing;
+  @IsOptional()
+  furnishing?: Furnishing;
 
-  @ApiProperty({
-    example: ['BACHELOR', 'FAMILY'],
-    enum: RentFor,
-    isArray: true,
-  })
+  @ApiProperty()
   @IsArray()
-  @IsEnum(RentFor, { each: true })
-  @IsNotEmpty()
-  rentFor: RentFor[];
+  @IsString({ each: true })
+  @IsOptional()
+  furnishingExtras?: string[];
 
-  @ApiProperty({
-    example: [
-      'https://example.com/photo1.jpg',
-      'https://example.com/photo2.jpg',
-    ],
-    type: [String],
-    description: 'Array of photo URLs (max 10)',
-  })
+  @ApiProperty()
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  pgFurnishing?: string[];
+
+  // Features and Amenities
+  @ApiProperty({ enum: Amenities, isArray: true })
+  @IsArray()
+  @IsEnum(Amenities, { each: true })
+  @IsOptional()
+  amenities?: Amenities[];
+
+  @ApiProperty({ enum: Features, isArray: true })
+  @IsArray()
+  @IsEnum(Features, { each: true })
+  @IsOptional()
+  features?: Features[];
+
+  @ApiProperty({ enum: PreferredTenant })
+  @IsEnum(PreferredTenant)
+  @IsOptional()
+  preferredTenant?: PreferredTenant;
+
+  // Images
+  @ApiProperty()
+  @IsString()
+  @IsOptional()
+  mainImage?: string;
+
+  @ApiProperty({ type: [String], description: 'Array of photo URLs (max 10)' })
   @IsArray()
   @ArrayMaxSize(10)
   @IsString({ each: true })
   @IsNotEmpty()
   photos: string[];
 
-  @ApiProperty({
-    example: { availableFrom: 'datetime', deposit: 50000, rentAmount: 20000 },
-    description: 'Details specific to rental properties (optional)',
-  })
+  @ApiProperty()
+  @IsBoolean()
   @IsOptional()
-  rentDetails?: RentDetailsUpdate;
-
-  @ApiProperty({
-    example: { askingPrice: 20000 },
-    description: 'Details specific to sale properties (optional)',
-  })
-  @IsOptional()
-  sellDetails?: SellDetailsDto;
-
-  // change
-  @ApiProperty({ example: ['GYM', 'PARKING'], enum: Amenities, isArray: true })
-  @IsArray()
-  @IsEnum(Amenities, { each: true })
-  @IsOptional()
-  amenities?: Amenities[];
-
-  @ApiProperty({ example: 50000, description: 'Security deposit amount' })
-  @IsNumber()
-  @Min(0)
-  @IsOptional()
-  security: number;
+  isPreoccupied?: boolean;
 }

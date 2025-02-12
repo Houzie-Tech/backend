@@ -10,15 +10,15 @@ import {
 } from '@nestjs/common';
 import { FormService } from './form.service';
 import { CreateFormDto } from './dto/create-form.dto';
-import { UpdateFormDto } from './dto/update-form.dto';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { AuthGuard } from '../auth/guards/jwt.guard';
-import { ListingFilters } from './dto/find.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
+import { UpdateFormDto } from './dto/update-form.dto';
 
 @Controller('listings')
 export class FormController {
   constructor(private readonly formService: FormService) {}
+
   @UseGuards(AuthGuard)
   @Roles('BROKER')
   @Post()
@@ -27,7 +27,7 @@ export class FormController {
   }
 
   @Get()
-  findAll(@Body() findFormDto: ListingFilters) {
+  findAll(@Body() findFormDto: any) {
     return this.formService.findAll(findFormDto);
   }
 

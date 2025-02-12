@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Listing" ALTER COLUMN "availableFrom" SET DEFAULT CURRENT_TIMESTAMP;

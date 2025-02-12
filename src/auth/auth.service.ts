@@ -38,7 +38,6 @@ export class AuthService {
         aadharNumber,
         ...userData
       } = registerDto;
-
       // Check for existing user with the same email, phone number, or aadhar number.
       const uniqueConditions = [];
       if (email) uniqueConditions.push({ email });

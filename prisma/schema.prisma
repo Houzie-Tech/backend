@@ -78,21 +78,65 @@ enum LeadSource {
 }
 
 enum Amenities {
-  OWNER_FREE
-  PET_FRIENDLY
+  WIFI
+  TWO_WHEELER_PARKING
+  FOUR_WHEELER_PARKING
+  WATER_SUPPLY_24_7
+  POWER_BACKUP
+  SECURITY_24_7
+  CCTV
+  DAILY_HOUSEKEEPING
+  MEALS
+}
+
+enum Features {
   COUPLE_FRIENDLY
-  BALCONY
+  PET_FRIENDLY
+  OWNER_FREE
+  ATTACHED_BATHROOM
+  GATED_COMMUNITY
+}
+
+enum SharingType {
+  SINGLE
+  SHARED
+  DOUBLE_SHARING
+  TRIPLE_SHARING
+}
+
+enum Configuration {
+  ONE_RK
+  ONE_BHK
+  TWO_BHK
+  THREE_BHK
+  FOUR_BHK
+  FOUR_PLUS_BHK
+}
+
+enum PreferredTenant {
+  FAMILY
+  BACHELOR
+  COMPANY_LEASE
+  ANY
+}
+
+enum LockInPeriod {
+  FIFTEEN_DAYS
+  ONE_MONTH
+  THREE_MONTHS
+  SIX_MONTHS
 }
 
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  phoneNumber  String?  @unique
-  aadharNumber String?  @unique
-  role         Role
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(uuid())
+  name           String
+  email          String   @unique
+  phoneNumber    String?  @unique
+  aadharNumber   String?  @unique
+  role           Role
+  privacySetting String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   listings Listing[]
   Lead     Lead[]
@@ -148,54 +192,55 @@ model RefreshToken {
 model Listing {
   id            String       @id @default(uuid())
   title         String
-  description   String // Detailed property description
-  price         Float // Price or rent amount
-  propertyType  PropertyType // Type of property
-  configuration String // 1BHK, 2BHK, etc.
-  bedrooms      Int // Number of bedrooms
-  bathrooms     Int // Number of bathrooms
-  furnishing    Furnishing // Furnishing status
-  rentFor       RentFor[]    @default([]) // Target audience for rental (Bachelor, Family)
-  photos        String[] // Array of photo URLs (max 10)
+  description   String
+  propertyType  PropertyType
+  mainImage     String?
+  photos        String[]
   isActive      Boolean      @default(true)
+  views         Int          @default(0)
+  isPreoccupied Boolean      @default(false)
 
-  Security  Float @default(0)
-  Brokerage Float @default(0)
+  price         Float // Monthly rent or selling price
+  security      Float         @default(0)
+  brokerage     Float         @default(0)
+  isNegotiable  Boolean       @default(false)
+  lockInPeriod  LockInPeriod?
+  availableFrom DateTime?     @default(now())
 
-  Amenities   Amenities[]
-  rentDetails RentDetails? // Embedded rent details for rental properties
-  sellDetails SellDetails? // Embedded sell details for sale properties
+  configuration         Configuration?
+  bedrooms              Int?
+  bathrooms             Int?
+  balconies             Int?
+  floorNumber           String?
+  totalFloors           Int? // For Villa
+  maintenanceCharges    Float?
+  isMaintenanceIncluded Boolean        @default(true)
+
+  // Co-living/PG specific
+  roomType       String? // "1 Room" or "1 RK" for coliving
+  sharingType    SharingType?
+  unitsAvailable Int?
+  roomSize       Float? // in sq ft
+
+  // Features and Amenities
+  amenities Amenities[]
+  features  Features[]
+
+  preferredTenant PreferredTenant?
 
   locationId String
-  location   Location @relation(fields: [locationId], references: [id]) // Embedded location details
-
-  status ListingStatus @default(PENDING) // Status of the form (e.g., PENDING, APPROVED, REJECTED, ACTIVE, CLOSED)
+  location   Location @relation(fields: [locationId], references: [id])
 
   brokerId String
-  broker   User   @relation(fields: [brokerId], references: [id]) // Association with User having the BROKER role
+  broker   User   @relation(fields: [brokerId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  leads Lead[]
+
+  status    ListingStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   @@index([price, locationId])
-}
-
-model RentDetails {
-  id            String   @id @default(uuid())
-  rentAmount    Float // Rent amount
-  deposit       Float // Deposit amount
-  availableFrom DateTime // Availability date
-
-  listingId String  @unique
-  listing   Listing @relation(fields: [listingId], references: [id])
-}
-
-model SellDetails {
-  id          String @id @default(uuid())
-  askingPrice Float // Asking price for sale
-
-  listingId String  @unique
-  listing   Listing @relation(fields: [listingId], references: [id])
 }
 
 model Location {
@@ -206,41 +251,31 @@ model Location {
   latitude  Float // Geographical latitude
   longitude Float // Geographical longitude
   listings  Listing[]
+
+  @@unique([latitude, longitude])
 }
 
 model Lead {
   id                 String         @id @default(uuid())
   name               String
-  email              String? // Optional email contact
+  email              String?
   phoneNumber        String         @unique
-  alternatePhone     String? // Secondary contact number
+  alternatePhone     String?
   isActive           Boolean        @default(true)
-  // Requirements
   budgetMin          Float
   budgetMax          Float
-  preferredLocations String[] // Array of preferred locations
-  propertyTypes      PropertyType[] // What kinds of properties they're interested in
-  // configuration      String[] // Desired configurations (1BHK, 2BHK, etc.)
-  // furnishing         Furnishing[] // Preferred furnishing options
-  // rentFor            RentFor? // If they're bachelor or family
-  // moveInDate         DateTime? // When they plan to move
+  preferredLocations String[]
+  propertyTypes      PropertyType[]
+  requirements       String?
+  note               String         @default("")
 
-  // Lead Status Management
-  // status           LeadStatus @default(NEW)
-  // priority         Priority   @default(MEDIUM)
-  // lastContactedAt  DateTime? // When the broker last reached out
-  // nextFollowUpDate DateTime? // Scheduled next follow-up
+  // New relation to Listing
+  listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id])
 
-  // Notes and Requirements
-  requirements String? // Detailed requirements text
-  note         String  @default("")
-
-  // Relationships
-  brokerId String
-  broker   User   @relation(fields: [brokerId], references: [id])
-
-  // Metadata
-  source    LeadSource @default(DIRECT) // How the lead was acquired
+  brokerId  String
+  broker    User       @relation(fields: [brokerId], references: [id])
+  source    LeadSource @default(DIRECT)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
