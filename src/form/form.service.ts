@@ -26,7 +26,6 @@ export class FormService {
             location,
             prisma,
           );
-          console.log('locationDetails', locationDetails);
           if (!locationDetails) {
             throw new InternalServerErrorException(
               'Failed to create or find location',
@@ -49,7 +48,6 @@ export class FormService {
               },
             },
           });
-          console.log('data', data);
           return data;
         },
         {

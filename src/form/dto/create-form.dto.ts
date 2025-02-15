@@ -146,12 +146,6 @@ export class CreateFormDto {
   @IsOptional()
   furnishingExtras?: string[];
 
-  @ApiProperty()
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  pgFurnishing?: string[];
-
   // Features and Amenities
   @ApiProperty({ enum: Amenities, isArray: true })
   @IsArray()

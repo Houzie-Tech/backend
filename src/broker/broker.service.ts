@@ -14,8 +14,6 @@ export class BrokerService {
     return `This action returns all broker`;
   }
 
-  // need to show count of active listin  `gs
-  // show count of active leads
   async findOne(brokerId: string) {
     try {
       const brokerDetails = await this.prisma.user.findUniqueOrThrow({
@@ -78,6 +76,28 @@ export class BrokerService {
     }
   }
 
+  async getActiveLeads(brokerId: string) {
+    try {
+      const leads = await this.prisma.lead.findMany({
+        where: { brokerId, isActive: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phoneNumber: true,
+          source: true,
+          isActive: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+      return leads;
+    } catch (error) {
+      console.error('Error fetching active listings:', error);
+      throw new InternalServerErrorException('Failed to fetch active listings');
+    }
+  }
   async getListingsFromBroker(brokerId: string) {
     try {
       const listings = await this.prisma.listing.findMany({
@@ -85,10 +105,17 @@ export class BrokerService {
         select: {
           id: true,
           title: true,
+          description: true,
           location: true,
           brokerId: true,
           isActive: true,
           photos: true,
+          mainImage: true,
+          bathrooms: true,
+          bedrooms: true,
+          balconies: true,
+          propertyType: true,
+          views: true,
         },
       });
 

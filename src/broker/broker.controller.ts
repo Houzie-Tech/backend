@@ -18,6 +18,12 @@ export class BrokerController {
   }
 
   @UseGuards(AuthGuard)
+  @Get('leads')
+  getActiveLeads(@GetUser('sub') brokerId: string) {
+    return this.brokerService.getActiveLeads(brokerId);
+  }
+
+  @UseGuards(AuthGuard)
   @Get('listings')
   getListings(@GetUser('sub') brokerId: string) {
     return this.brokerService.getListingsFromBroker(brokerId);

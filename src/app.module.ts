@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { FormModule } from './form/form.module';
 import { LeadsModule } from './leads/leads.module';
 import { BrokerModule } from './broker/broker.module';
+import { ProfileModule } from './profile/profile.module';
 @Module({
   imports: [
     PrismaModule,
@@ -16,6 +17,7 @@ import { BrokerModule } from './broker/broker.module';
     FormModule,
     BrokerModule,
     LeadsModule,
+    ProfileModule,
   ],
   controllers: [],
   providers: [],

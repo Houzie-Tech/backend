@@ -87,6 +87,7 @@ enum Amenities {
   CCTV
   DAILY_HOUSEKEEPING
   MEALS
+  GYM
 }
 
 enum Features {
@@ -225,6 +226,9 @@ model Listing {
   // Features and Amenities
   amenities Amenities[]
   features  Features[]
+
+  furnishing       Furnishing?
+  furnishingExtras String[]
 
   preferredTenant PreferredTenant?
 
