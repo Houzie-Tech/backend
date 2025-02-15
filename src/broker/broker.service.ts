@@ -116,6 +116,7 @@ export class BrokerService {
           balconies: true,
           propertyType: true,
           views: true,
+          price: true,
         },
       });
 
