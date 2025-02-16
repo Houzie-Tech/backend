@@ -252,13 +252,24 @@ export class FormService {
           location: true,
           brokerId: true,
           isActive: true,
+          price: true,
+          propertyType: true,
+          bedrooms: true,
+          bathrooms: true,
+          mainImage: true,
           photos: true,
+          title: true,
+          description: true,
+          isPreoccupied: true,
+          brokerage: true,
+          security: true,
+          maintenanceCharges: true,
+          isMaintenanceIncluded: true,
+          isNegotiable: true,
+          lockInPeriod: true,
+          availableFrom: true,
         },
       });
-
-      console.log('Listings found:', listings.length);
-      console.log('Raw listings:', listings);
-
       // Filter by exact distance
       let filteredListings = listings;
       if (latitude !== undefined && longitude !== undefined) {
