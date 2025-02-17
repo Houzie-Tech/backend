@@ -143,7 +143,7 @@ export class LeadsService {
       return { message: `Lead with ID ${id} successfully deleted.` };
     } catch (error) {
       console.error('Error deleting lead:', error);
-      throw new Error('An unexpected error occurred while deleting the lead.');
+      throw new NotFoundException(`Lead with ${id} not found`);
     }
   }
 }

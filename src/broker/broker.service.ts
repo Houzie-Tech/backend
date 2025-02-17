@@ -120,7 +120,7 @@ export class BrokerService {
         },
       });
 
-      return { error: null, data: listings };
+      return listings;
     } catch (error) {
       console.error('Error fetching listings for broker:', error);
       return { error: 'Failed to fetch listings', data: [] };

@@ -9,7 +9,7 @@ import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LocationDto } from './dto/location.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, PropertyType } from '@prisma/client';
 
 @Injectable()
 export class FormService {
@@ -109,7 +109,6 @@ export class FormService {
       if (existingLocation) {
         return existingLocation;
       }
-
       // Create new location
       return await prisma.location.create({
         data: {
@@ -170,7 +169,20 @@ export class FormService {
     });
   }
 
-  async findAll(filters: any) {
+  async findAll(filters: {
+    minPrice?: number;
+    maxPrice?: number;
+    minBedrooms?: number;
+    maxBedrooms?: number;
+    minBathrooms?: number;
+    maxBathrooms?: number;
+    propertyType?: PropertyType[];
+    latitude?: number;
+    longitude?: number;
+    distanceInKm?: number;
+    page?: number;
+    limit?: number;
+  }) {
     try {
       const {
         minPrice,

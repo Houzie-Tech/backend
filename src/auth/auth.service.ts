@@ -379,21 +379,52 @@ export class AuthService {
   }
 
   async refreshTokens(refreshToken: string) {
-    const decoded = this.jwtService.verify(refreshToken);
-    const user = await this.prisma.user.findUnique({
-      where: { id: decoded.sub },
-    });
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    try {
+      // Find the refresh token in the database first
+      const existingToken = await this.prisma.refreshToken.findUnique({
+        where: { token: refreshToken },
+        include: {
+          UserAuth: {
+            include: {
+              user: {
+                include: {
+                  userAuth: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      const user = existingToken.UserAuth.user;
+      if (!existingToken || existingToken.expires < new Date()) {
+        throw new UnauthorizedException('Invalid or expired refresh token');
+      }
+
+      if (!existingToken.UserAuth) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      // Generate new tokens
+      const tokens = await this.generateTokens(user);
+
+      // Delete the used refresh token
+      await this.prisma.refreshToken.delete({
+        where: { id: existingToken.id },
+      });
+
+      // Create new refresh token
+      await this.prisma.refreshToken.create({
+        data: {
+          token: crypto.randomUUID(), // Generate a new UUID for refresh token
+          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+          userAuthId: existingToken.UserAuth.id,
+        },
+      });
+
+      return tokens;
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
     }
-    const fullUser = await this.prisma.user.findUnique({
-      where: { id: user.id },
-      include: {
-        userAuth: true,
-      },
-    });
-    const tokens = await this.generateTokens(fullUser);
-    return tokens;
   }
 
   private async generateTokens(user: {

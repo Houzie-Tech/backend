@@ -1,19 +1,31 @@
-import { Controller, Get, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { ProfileService } from './profile.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { AuthGuard } from 'src/auth/guards/jwt.guard';
+import { GetUser } from 'src/auth/decorators/get-user.decorator';
 
 @Controller('profile')
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
-  @Get(':id')
-  findOne(@Param('id') userId: string) {
+  @UseGuards(AuthGuard)
+  @Get('')
+  findOne(@GetUser('sub') userId: string) {
     return this.profileService.findOne(userId);
   }
 
-  @Patch(':id')
+  @UseGuards(AuthGuard)
+  @Patch('')
   update(
-    @Param('id') userId: string,
+    @GetUser('sub') userId: string,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
     return this.profileService.update(userId, updateProfileDto);

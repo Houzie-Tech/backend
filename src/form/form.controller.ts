@@ -14,6 +14,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 import { AuthGuard } from '../auth/guards/jwt.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UpdateFormDto } from './dto/update-form.dto';
+import { PropertyType } from '@prisma/client';
 
 @Controller('listings')
 export class FormController {
@@ -27,7 +28,23 @@ export class FormController {
   }
 
   @Get()
-  findAll(@Body() findFormDto: any) {
+  findAll(
+    @Body()
+    findFormDto: {
+      minPrice?: number;
+      maxPrice?: number;
+      minBedrooms?: number;
+      maxBedrooms?: number;
+      minBathrooms?: number;
+      maxBathrooms?: number;
+      propertyType?: PropertyType[];
+      latitude?: number;
+      longitude?: number;
+      distanceInKm?: number;
+      page?: number;
+      limit?: number;
+    },
+  ) {
     return this.formService.findAll(findFormDto);
   }
 
