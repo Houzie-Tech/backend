@@ -280,6 +280,10 @@ export class FormService {
           isNegotiable: true,
           lockInPeriod: true,
           availableFrom: true,
+          amenities: true,
+          balconies: true,
+          configuration: true,
+          features: true,
         },
       });
       // Filter by exact distance
