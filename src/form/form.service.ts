@@ -284,6 +284,8 @@ export class FormService {
           balconies: true,
           configuration: true,
           features: true,
+          furnishing: true,
+          preferredTenant: true,
         },
       });
       // Filter by exact distance
