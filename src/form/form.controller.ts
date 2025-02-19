@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { FormService } from './form.service';
 import { CreateFormDto } from './dto/create-form.dto';
@@ -29,7 +30,7 @@ export class FormController {
 
   @Get()
   findAll(
-    @Body()
+    @Query()
     findFormDto: {
       minPrice?: number;
       maxPrice?: number;
