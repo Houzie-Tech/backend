@@ -9,7 +9,8 @@ import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LocationDto } from './dto/location.dto';
-import { Prisma, PropertyType } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { PropertySearchDto } from './dto/property-search.dto';
 
 @Injectable()
 export class FormService {
@@ -169,20 +170,7 @@ export class FormService {
     });
   }
 
-  async findAll(filters: {
-    minPrice?: number;
-    maxPrice?: number;
-    minBedrooms?: number;
-    maxBedrooms?: number;
-    minBathrooms?: number;
-    maxBathrooms?: number;
-    propertyType?: PropertyType[];
-    latitude?: number;
-    longitude?: number;
-    distanceInKm?: number;
-    page?: number;
-    limit?: number;
-  }) {
+  async findAll(searchParams: PropertySearchDto) {
     try {
       const {
         minPrice,
@@ -197,7 +185,7 @@ export class FormService {
         distanceInKm = 10,
         page = 1,
         limit = 10,
-      } = filters;
+      } = searchParams;
 
       const skip = (page - 1) * limit;
       const where: Prisma.ListingWhereInput = {};
@@ -210,6 +198,7 @@ export class FormService {
         };
       }
 
+      // Bedrooms filter
       if (minBedrooms || maxBedrooms) {
         where.bedrooms = {
           gte: minBedrooms,
@@ -217,6 +206,7 @@ export class FormService {
         };
       }
 
+      // Bathrooms filter
       if (minBathrooms || maxBathrooms) {
         where.bathrooms = {
           gte: minBathrooms,
@@ -224,18 +214,16 @@ export class FormService {
         };
       }
 
+      // Property type filter
       if (propertyType?.length) {
         where.propertyType = { in: propertyType };
       }
-      // Location range filter using a more generous bounding box
-      if (latitude !== undefined && longitude !== undefined) {
-        // Use a slightly larger bounding box to account for Earth's curvature
-        const degreeRadius = (distanceInKm * 1.2) / 111.32;
 
-        // Calculate bounding box
+      // Location range filter
+      if (latitude !== undefined && longitude !== undefined) {
+        const degreeRadius = (distanceInKm * 1.2) / 111.32;
         const minLat = latitude - degreeRadius;
         const maxLat = latitude + degreeRadius;
-        // Adjust for longitude distance varying with latitude
         const longitudeRadius =
           degreeRadius / Math.cos(this.toRadians(latitude)) || degreeRadius;
         const minLng = longitude - longitudeRadius;
@@ -249,14 +237,9 @@ export class FormService {
             { longitude: { lte: maxLng } },
           ],
         };
-
-        console.log('Bounding Box:', {
-          latRange: [minLat, maxLat],
-          lngRange: [minLng, maxLng],
-        });
       }
 
-      // Get the filtered listings
+      // Get filtered listings
       const listings = await this.prisma.listing.findMany({
         where,
         select: {
@@ -288,7 +271,8 @@ export class FormService {
           preferredTenant: true,
         },
       });
-      // Filter by exact distance
+
+      // Apply exact distance filtering
       let filteredListings = listings;
       if (latitude !== undefined && longitude !== undefined) {
         filteredListings = listings.filter((listing) => {
@@ -298,12 +282,11 @@ export class FormService {
             listing.location.latitude,
             listing.location.longitude,
           );
-          console.log(`Distance for listing ${listing.id}: ${distance}km`);
           return distance <= distanceInKm;
         });
       }
 
-      // Apply pagination after distance filtering
+      // Apply pagination
       const total = filteredListings.length;
       const paginatedListings = filteredListings.slice(skip, skip + limit);
 
@@ -325,7 +308,7 @@ export class FormService {
       );
     }
   }
-  // Helper method to calculate distance using Haversine formula
+
   private calculateDistance(
     lat1: number,
     lon1: number,

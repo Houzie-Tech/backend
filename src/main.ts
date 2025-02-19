@@ -16,9 +16,12 @@ async function bootstrap() {
   // Enable ValidationPipe globally
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Removes fields not defined in DTO
-      forbidNonWhitelisted: true, // Throws an error if extra fields are provided
-      transform: true, // Transforms plain objects to DTO instances
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      validateCustomDecorators: true,
+      stopAtFirstError: false,
     }),
   );
 
