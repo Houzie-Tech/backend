@@ -96,6 +96,7 @@ enum Features {
   OWNER_FREE
   ATTACHED_BATHROOM
   GATED_COMMUNITY
+  BALCONY 
 }
 
 enum SharingType {
@@ -118,6 +119,8 @@ enum PreferredTenant {
   FAMILY
   BACHELOR
   COMPANY_LEASE
+  MALE 
+  FEMALE
   ANY
 }
 
