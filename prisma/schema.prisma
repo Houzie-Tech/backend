@@ -14,6 +14,9 @@ enum Role {
   ADMIN
   BROKER
   RENTER
+  PROPERTY_OWNER
+  REAL_ESTATE_AGENT
+  FLAT_MATES
 }
 
 enum OTPType {
@@ -97,7 +100,7 @@ enum Features {
   OWNER_FREE
   ATTACHED_BATHROOM
   GATED_COMMUNITY
-  BALCONY 
+  BALCONY
 }
 
 enum SharingType {
@@ -120,7 +123,7 @@ enum PreferredTenant {
   FAMILY
   BACHELOR
   COMPANY_LEASE
-  MALE 
+  MALE
   FEMALE
   ANY
 }
@@ -138,6 +141,7 @@ model User {
   email          String   @unique
   phoneNumber    String?  @unique
   aadharNumber   String?  @unique
+  companyName    String?
   role           Role
   privacySetting String?
   createdAt      DateTime @default(now())

@@ -54,6 +54,10 @@ export class RegisterAuthDto {
   @IsOptional()
   aadharNumber?: string;
 
+  @IsString({ message: 'company must be a string.' })
+  @IsOptional()
+  company?: string;
+
   @ApiProperty({
     enum: Role,
     enumName: 'Role',
