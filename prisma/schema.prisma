@@ -147,7 +147,9 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  listings Listing[]
+  listings Listing[] @relation("broker")
+  Listing  Listing[] @relation("verifiedBy")
+
   Lead     Lead[]
   userAuth UserAuth?
 }
@@ -231,9 +233,14 @@ model Listing {
   unitsAvailable Int?
   roomSize       Float? // in sq ft
 
+  // verified 
+  verified     Boolean     @default(false)
+  verifiedAt   DateTime?
+  verifiedById String?
+  verifiedBy   User?       @relation(fields: [verifiedById], references: [id], name: "verifiedBy")
   // Features and Amenities
-  amenities Amenities[]
-  features  Features[]
+  amenities    Amenities[]
+  features     Features[]
 
   furnishing       Furnishing?
   furnishingExtras String[]
@@ -244,7 +251,7 @@ model Listing {
   location   Location @relation(fields: [locationId], references: [id])
 
   brokerId String
-  broker   User   @relation(fields: [brokerId], references: [id])
+  broker   User   @relation(fields: [brokerId], references: [id], name: "broker")
 
   leads Lead[]
 
@@ -280,6 +287,10 @@ model Lead {
   propertyTypes      PropertyType[]
   requirements       String?
   note               String         @default("")
+  firstResponseTime  Float? // Time in minutes until first response
+
+  status   LeadStatus @default(NEW)
+  priority Priority   @default(LOW)
 
   // New relation to Listing
   listingId String?
