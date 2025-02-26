@@ -6,6 +6,7 @@ import { FormModule } from './form/form.module';
 import { LeadsModule } from './leads/leads.module';
 import { BrokerModule } from './broker/broker.module';
 import { ProfileModule } from './profile/profile.module';
+import { AdminModule } from './admin/admin.module';
 @Module({
   imports: [
     PrismaModule,
@@ -18,6 +19,7 @@ import { ProfileModule } from './profile/profile.module';
     BrokerModule,
     LeadsModule,
     ProfileModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [],
