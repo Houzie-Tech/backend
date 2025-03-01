@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Gender, Role } from '@prisma/client';
 import {
   IsEmail,
   IsEnum,
@@ -24,6 +24,13 @@ export class RegisterAuthDto {
   @IsEmail({}, { message: 'Invalid email format.' })
   @IsNotEmpty({ message: 'Email is required.' })
   email: string;
+
+  @ApiProperty({
+    description: 'Gender of the user',
+    example: 'MALE',
+  })
+  @IsOptional()
+  gender: Gender;
 
   @ApiProperty({
     description: 'Password (required for normal login, optional for OAuth)',
