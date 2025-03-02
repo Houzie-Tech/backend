@@ -452,7 +452,7 @@ export class AuthService {
           isEmailVerified: user.userAuth?.isEmailVerified,
           isPhoneVerified: user.userAuth?.isPhoneVerified,
         },
-        { expiresIn: '15m' },
+        { expiresIn: '365d' },
       ),
       this.generateRefreshToken(user.userAuth.id),
     ]);
