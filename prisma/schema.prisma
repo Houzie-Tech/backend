@@ -17,6 +17,8 @@ enum Role {
   PROPERTY_OWNER
   REAL_ESTATE_AGENT
   FLAT_MATES
+  PG_OWNER 
+  CO_LIVING_OWNER
 }
 
 enum OTPType {
