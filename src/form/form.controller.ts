@@ -8,7 +8,6 @@ import {
   Delete,
   UseGuards,
   Query,
-  Optional,
 } from '@nestjs/common';
 import { FormService } from './form.service';
 import { CreateFormDto } from './dto/create-form.dto';
@@ -36,12 +35,9 @@ export class FormController {
   }
 
   @Get(':id')
-  async findOne(
-    @Param('id') id: string,
-    @Optional() @GetUser('sub') userId?: string,
-  ) {
+  async findOne(@Param('id') id: string) {
     try {
-      const result = await this.formService.findOne(id, userId);
+      const result = await this.formService.findOne(id);
       return { message: 'Listing retrieved successfully', data: result };
     } catch (error) {
       console.error(`Error retrieving listing with ID ${id}:`, error);

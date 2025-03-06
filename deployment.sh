@@ -25,7 +25,7 @@ npm run build
 # Restart the application using PM2
 echo "Restarting application with PM2..."
 pm2 stop main || true
-pm2 start dist/main.js 
+pm2 start dist/src/main.js 
 
 # Save PM2 process list and enable startup
 pm2 save
