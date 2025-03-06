@@ -98,6 +98,7 @@ export class BrokerService {
       throw new InternalServerErrorException('Failed to fetch active listings');
     }
   }
+
   async getListingsFromBroker(brokerId: string) {
     try {
       const listings = await this.prisma.listing.findMany({
@@ -124,6 +125,29 @@ export class BrokerService {
     } catch (error) {
       console.error('Error fetching listings for broker:', error);
       return { error: 'Failed to fetch listings', data: [] };
+    }
+  }
+
+  async toggleAiDescription(listingId: string, toggle: boolean) {
+    try {
+      // Update the listing's AI description toggle status
+      const listing = await this.prisma.listing.update({
+        where: { id: listingId },
+        data: {
+          descriptionAi: toggle, // Toggle the AI description flag
+        },
+      });
+
+      return {
+        message: `Successfully updated the AI description toggle for listing ID: ${listingId}`,
+        listing,
+      };
+    } catch (error) {
+      console.error('Error toggling AI description:', error);
+      return {
+        error: 'Failed to update AI description toggle',
+        details: error.message,
+      };
     }
   }
 }

@@ -11,6 +11,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { LocationDto } from './dto/location.dto';
 import { Prisma } from '@prisma/client';
 import { PropertySearchDto } from './dto/property-search.dto';
+import { generateAiDescription } from './util/listingsAi.util';
 
 @Injectable()
 export class FormService {
@@ -332,27 +333,61 @@ export class FormService {
     return degrees * (Math.PI / 180);
   }
 
-  async findOne(id: string) {
-    const listing = await this.prisma.listing.findUnique({
-      where: { id },
-      include: {
-        location: true,
-        broker: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
+  async findOne(id: string, userId?: string) {
+    try {
+      // Fetch the listing with related data (location and broker details)
+      const listing = await this.prisma.listing.findUnique({
+        where: { id },
+        include: {
+          location: true,
+          broker: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phoneNumber: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!listing) {
-      throw new NotFoundException(`Listing #${id} not found`);
+      // If the listing is not found, throw a NotFoundException
+      if (!listing) {
+        throw new NotFoundException(`Listing #${id} not found`);
+      }
+
+      let aiGeneratedDescription: string | null = null;
+
+      if (listing.descriptionAi && userId) {
+        const userData = await this.prisma.user.findUnique({
+          where: { id: userId },
+          include: {
+            favorites: true,
+            visitedListings: true,
+          },
+        });
+
+        if (userData) {
+          aiGeneratedDescription = await generateAiDescription(
+            listing,
+            userData.favorites,
+            userData.visitedListings,
+          );
+        }
+      }
+
+      // Prepare the final description
+      const newDescription = aiGeneratedDescription || listing.description;
+
+      // Return the updated listing with the new description
+      return {
+        ...listing,
+        description: newDescription, // Override the original description with AI-generated one (if available)
+      };
+    } catch (error) {
+      console.error('Error in findOne:', error);
+      throw new Error('Failed to fetch listing details');
     }
-
-    return listing;
   }
 
   async update(id: string, updateFormDto: UpdateFormDto, userId: string) {

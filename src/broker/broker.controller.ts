@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { BrokerService } from './broker.service';
 import { AuthGuard } from 'src/auth/guards/jwt.guard';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
@@ -33,5 +33,29 @@ export class BrokerController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.brokerService.findOne(id);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('/true/:id')
+  async toggleAiDescriptionTrue(@Param('id') id: string) {
+    try {
+      const result = await this.brokerService.toggleAiDescription(id, true);
+      return { message: 'Successfully toggled AI description', data: result };
+    } catch (error) {
+      console.error('Error toggling AI description:', error);
+      return { error: 'Failed to toggle AI description' };
+    }
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('/false/:id')
+  async toggleAiDescriptionFalse(@Param('id') id: string) {
+    try {
+      const result = await this.brokerService.toggleAiDescription(id, false);
+      return { message: 'Successfully toggled AI description', data: result };
+    } catch (error) {
+      console.error('Error toggling AI description:', error);
+      return { error: 'Failed to toggle AI description' };
+    }
   }
 }

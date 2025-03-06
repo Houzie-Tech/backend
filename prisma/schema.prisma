@@ -17,7 +17,7 @@ enum Role {
   PROPERTY_OWNER
   REAL_ESTATE_AGENT
   FLAT_MATES
-  PG_OWNER 
+  PG_OWNER
   CO_LIVING_OWNER
 }
 
@@ -214,7 +214,6 @@ model RefreshToken {
 model Listing {
   id            String       @id @default(uuid())
   title         String
-  description   String
   propertyType  PropertyType
   mainImage     String?
   photos        String[]
@@ -222,6 +221,10 @@ model Listing {
   views         Int          @default(0)
   isPreoccupied Boolean      @default(false)
 
+  // ai feature
+  description   String
+  descriptionAi Boolean       @default(false)
+  
   price         Float // Monthly rent or selling price
   security      Float         @default(0)
   brokerage     Float         @default(0)
@@ -245,14 +248,14 @@ model Listing {
   roomSize       Float? // in sq ft
 
   // verified 
-  verified     Boolean     @default(false)
+  verified     Boolean   @default(false)
   verifiedAt   DateTime?
   verifiedById String?
-  verifiedBy   User?       @relation(fields: [verifiedById], references: [id], name: "verifiedBy")
-  
+  verifiedBy   User?     @relation(fields: [verifiedById], references: [id], name: "verifiedBy")
+
   // Features and Amenities
-  amenities    Amenities[]
-  features     Features[]
+  amenities Amenities[]
+  features  Features[]
 
   furnishing       Furnishing?
   furnishingExtras String[]
