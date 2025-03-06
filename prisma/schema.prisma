@@ -26,6 +26,13 @@ enum OTPType {
   PHONE
 }
 
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
 enum ListingStatus {
   PENDING
   APPROVED
@@ -163,6 +170,7 @@ model User {
   visitedListings  VisitedListing[]
   Lead             Lead[]
   userAuth         UserAuth?
+  Report           Report[]
 }
 
 model UserAuth {
@@ -223,8 +231,8 @@ model Listing {
 
   // ai feature
   description   String
-  descriptionAi Boolean       @default(false)
-  
+  descriptionAi Boolean @default(false)
+
   price         Float // Monthly rent or selling price
   security      Float         @default(0)
   brokerage     Float         @default(0)
@@ -277,7 +285,27 @@ model Listing {
   favoritedBy FavoriteListing[]
   visitedBy   VisitedListing[]
 
+  reports Report[]
+
   @@index([price, locationId])
+}
+
+model Report {
+  id        String       @id @default(uuid())
+  reason    String
+  details   String?
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+
+  reportedById String
+  reportedBy   User   @relation(fields: [reportedById], references: [id])
+
+  @@index([listingId])
+  @@index([reportedById])
 }
 
 model FavoriteListing {
