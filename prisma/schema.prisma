@@ -249,6 +249,7 @@ model Listing {
   verifiedAt   DateTime?
   verifiedById String?
   verifiedBy   User?       @relation(fields: [verifiedById], references: [id], name: "verifiedBy")
+  
   // Features and Amenities
   amenities    Amenities[]
   features     Features[]
