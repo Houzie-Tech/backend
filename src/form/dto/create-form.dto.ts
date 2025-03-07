@@ -8,6 +8,8 @@ import {
   IsOptional,
   IsEnum,
   IsBoolean,
+  ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import {
@@ -21,6 +23,32 @@ import {
   LockInPeriod,
 } from '@prisma/client';
 import { LocationDto } from './location.dto';
+import { Type } from 'class-transformer';
+
+export class OccupantDto {
+  @ApiProperty({ example: 'John Doe' })
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @ApiProperty({ example: 28 })
+  @IsNumber()
+  @Min(0)
+  age: number;
+
+  @ApiProperty({ example: 'Software Engineer' })
+  @IsString()
+  @IsNotEmpty()
+  profession: string;
+
+  @ApiProperty({
+    example: 'Quiet person who works from home most days',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  about?: string;
+}
 
 export class CreateFormDto {
   @ApiProperty({ example: 'Modern 2BHK Apartment' })
@@ -181,4 +209,23 @@ export class CreateFormDto {
   @IsBoolean()
   @IsOptional()
   isPreoccupied?: boolean;
+
+  // @ApiProperty({ required: false, example: 3 })
+  // @ValidateIf((o) => o.isPreoccupied === true)
+  // @IsNumber()
+  // @Min(1)
+  // @IsOptional()
+  // totalOccupants?: number;
+
+  @ApiProperty({
+    type: [OccupantDto],
+    description: 'Details of current occupants if property is pre-occupied',
+    required: false,
+  })
+  @ValidateIf((o) => o.isPreoccupied === true)
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OccupantDto)
+  @IsOptional()
+  occupants?: OccupantDto[];
 }

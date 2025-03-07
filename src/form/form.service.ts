@@ -21,7 +21,7 @@ export class FormService {
     try {
       return await this.prisma.$transaction(
         async (prisma) => {
-          const { location, ...listingDetails } = createFormDto;
+          const { location, occupants, ...listingDetails } = createFormDto;
 
           // Create location within the same transaction
           const locationDetails = await this.createLocationInTransaction(
@@ -35,7 +35,7 @@ export class FormService {
           }
 
           // Create the listing with all related records
-          const data = await prisma.listing.create({
+          const listing = await prisma.listing.create({
             data: {
               ...listingDetails,
               location: {
@@ -50,7 +50,36 @@ export class FormService {
               },
             },
           });
-          return data;
+
+          // If the property is pre-occupied and occupants data is provided, create occupant records
+          if (
+            listingDetails.isPreoccupied &&
+            occupants &&
+            occupants.length > 0
+          ) {
+            await Promise.all(
+              occupants.map((occupant) =>
+                prisma.occupant.create({
+                  data: {
+                    ...occupant,
+                    listing: {
+                      connect: {
+                        id: listing.id,
+                      },
+                    },
+                  },
+                }),
+              ),
+            );
+          }
+
+          // Fetch the listing with occupants data for the response
+          return prisma.listing.findUnique({
+            where: { id: listing.id },
+            include: {
+              Occupant: true,
+            },
+          });
         },
         {
           // Transaction configuration

@@ -285,9 +285,27 @@ model Listing {
   favoritedBy FavoriteListing[]
   visitedBy   VisitedListing[]
 
-  reports Report[]
+  reports  Report[]
+  Occupant Occupant[]
 
   @@index([price, locationId])
+}
+
+model Occupant {
+  id         String  @id @default(uuid())
+  name       String
+  age        Int
+  profession String
+  about      String?
+
+  // Relation to listing
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId])
 }
 
 model Report {
