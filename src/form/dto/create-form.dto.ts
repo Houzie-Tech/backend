@@ -21,6 +21,7 @@ import {
   SharingType,
   Configuration,
   LockInPeriod,
+  Gender, // Added Gender enum import
 } from '@prisma/client';
 import { LocationDto } from './location.dto';
 import { Type } from 'class-transformer';
@@ -48,6 +49,15 @@ export class OccupantDto {
   @IsString()
   @IsOptional()
   about?: string;
+
+  @ApiProperty({
+    enum: Gender,
+    example: 'MALE',
+    description: 'Gender of the occupant',
+  })
+  @IsEnum(Gender)
+  @IsNotEmpty()
+  gender: Gender;
 }
 
 export class CreateFormDto {
@@ -192,6 +202,17 @@ export class CreateFormDto {
   @IsOptional()
   preferredTenant?: PreferredTenant;
 
+  @ApiProperty({
+    enum: Gender,
+    isArray: true,
+    example: ['MALE', 'FEMALE'],
+    description: 'Preferred genders for tenants',
+  })
+  @IsArray()
+  @IsEnum(Gender, { each: true })
+  @IsOptional()
+  preferredGender?: Gender[];
+
   // Images
   @ApiProperty()
   @IsString()
@@ -209,13 +230,6 @@ export class CreateFormDto {
   @IsBoolean()
   @IsOptional()
   isPreoccupied?: boolean;
-
-  // @ApiProperty({ required: false, example: 3 })
-  // @ValidateIf((o) => o.isPreoccupied === true)
-  // @IsNumber()
-  // @Min(1)
-  // @IsOptional()
-  // totalOccupants?: number;
 
   @ApiProperty({
     type: [OccupantDto],

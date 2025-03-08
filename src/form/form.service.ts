@@ -215,6 +215,8 @@ export class FormService {
         distanceInKm = 10,
         page = 1,
         limit = 10,
+        preferredTenant,
+        preferredGender, // Extract preferredGender from searchParams
       } = searchParams;
 
       const skip = (page - 1) * limit;
@@ -247,6 +249,18 @@ export class FormService {
       // Property type filter
       if (propertyType?.length) {
         where.propertyType = { in: propertyType };
+      }
+
+      // Preferred tenant filter
+      if (preferredTenant) {
+        where.preferredTenant = preferredTenant;
+      }
+
+      // Preferred gender filter
+      if (preferredGender?.length) {
+        where.preferredGender = {
+          hasSome: preferredGender,
+        };
       }
 
       // Location range filter
@@ -299,6 +313,7 @@ export class FormService {
           features: true,
           furnishing: true,
           preferredTenant: true,
+          preferredGender: true, // Add preferredGender to the selection
         },
       });
 

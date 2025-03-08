@@ -269,6 +269,7 @@ model Listing {
   furnishingExtras String[]
 
   preferredTenant PreferredTenant?
+  preferredGender Gender[]
 
   locationId String
   location   Location @relation(fields: [locationId], references: [id])

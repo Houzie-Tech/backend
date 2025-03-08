@@ -7,7 +7,7 @@ import {
   Max,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { PropertyType } from '@prisma/client';
+import { PreferredTenant, PropertyType, Gender } from '@prisma/client';
 
 export class PropertySearchDto {
   @IsOptional()
@@ -92,4 +92,21 @@ export class PropertySearchDto {
   @Min(1)
   @Max(100)
   limit?: number = 10;
+
+  @IsOptional()
+  preferredTenant?: PreferredTenant;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(Gender, { each: true })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.split(',');
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return [value];
+  })
+  preferredGender?: Gender[];
 }
