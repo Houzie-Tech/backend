@@ -6,6 +6,7 @@ import {
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { FilterLeadsByListingDto } from './dto/filter.dto';
 
 @Injectable()
 export class LeadsService {
@@ -145,5 +146,47 @@ export class LeadsService {
       console.error('Error deleting lead:', error);
       throw new NotFoundException(`Lead with ${id} not found`);
     }
+  }
+
+  async filterByListing(userId: string, filterDto: FilterLeadsByListingDto) {
+    const { listingId, status, priority, isActive } = filterDto;
+
+    // Build the where condition using Prisma's filtering capabilities
+    const where = {
+      // Ensure user can only see their own leads
+      brokerId: userId,
+
+      // Required filter by listing ID
+      listingId,
+
+      // Optional filters
+      ...(status !== undefined && { status }),
+      ...(priority !== undefined && { priority }),
+      ...(isActive !== undefined && { isActive }),
+    };
+
+    // Return filtered leads with listing information included
+    const leads = await this.prisma.lead.findMany({
+      where,
+      include: {
+        // Include the related listing data
+        listing: true,
+      },
+      // Add sorting by creation date (newest first)
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Calculate total count for pagination purposes
+    const total = await this.prisma.lead.count({ where });
+
+    return {
+      data: leads,
+      meta: {
+        total,
+        filtered: leads.length,
+      },
+    };
   }
 }

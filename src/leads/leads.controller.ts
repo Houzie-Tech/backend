@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { LeadsService } from './leads.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -15,6 +16,7 @@ import { UpdateLeadDto } from './dto/update-lead.dto';
 import { AuthGuard } from '../auth/guards/jwt.guard';
 import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { Roles } from 'src/auth/decorators/roles.decorator';
+import { FilterLeadsByListingDto } from './dto/filter.dto';
 
 @UseGuards(AuthGuard)
 @Roles('ADMIN', 'BROKER')
@@ -40,6 +42,14 @@ export class LeadsController {
     return this.leadsService.findAll(userId, { query });
   }
 
+  @Get('filter/listing')
+  async filterByListing(
+    @GetUser('sub') userId: string,
+    @Query(new ValidationPipe({ transform: true }))
+    filterDto: FilterLeadsByListingDto,
+  ) {
+    return this.leadsService.filterByListing(userId, filterDto);
+  }
   // Fetch a single lead by ID
   @Get(':id')
   async findOne(@Param('id') id: string) {
