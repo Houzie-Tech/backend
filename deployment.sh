@@ -27,7 +27,7 @@ echo "Restarting application with PM2..."
 pm2 stop main || true
 pm2 start dist/src/main.js 
 
-# Save PM2 process list and enable startup
+# Save aPM2 process list and enable startup
 pm2 save
 pm2 startup
 
