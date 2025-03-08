@@ -50,14 +50,14 @@ export class OccupantDto {
   @IsOptional()
   about?: string;
 
-  @ApiProperty({
-    enum: Gender,
-    example: 'MALE',
-    description: 'Gender of the occupant',
-  })
-  @IsEnum(Gender)
-  @IsNotEmpty()
-  gender: Gender;
+  // @ApiProperty({
+  //   enum: Gender,
+  //   example: 'MALE',
+  //   description: 'Gender of the occupant',
+  // })
+  // @IsEnum(Gender)
+  // @IsNotEmpty()
+  // gender: Gender;
 }
 
 export class CreateFormDto {
@@ -205,7 +205,7 @@ export class CreateFormDto {
   @ApiProperty({
     enum: Gender,
     isArray: true,
-    example: ['MALE', 'FEMALE'],
+    example: ['MALE', 'cleeraFEMALE'],
     description: 'Preferred genders for tenants',
   })
   @IsArray()

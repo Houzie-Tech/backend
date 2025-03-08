@@ -34,10 +34,10 @@ export class ProfileService {
 
   async update(userId: string, updateProfileDto: UpdateProfileDto) {
     try {
-      const { name, aadharNumber , companyName} = updateProfileDto;
+      const { name, aadharNumber, companyName } = updateProfileDto;
       const profile = await this.prisma.user.update({
         where: { id: userId },
-        data: { name, aadharNumber , companyName },
+        data: { name, aadharNumber, companyName },
       });
       return profile;
     } catch (error) {

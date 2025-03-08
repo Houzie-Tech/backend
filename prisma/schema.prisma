@@ -298,6 +298,7 @@ model Occupant {
   age        Int
   profession String
   about      String?
+  gender     Gender  @default(OTHER)
 
   // Relation to listing
   listingId String
