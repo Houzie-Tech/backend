@@ -21,4 +21,13 @@ export class UpdateProfileDto extends PartialType(CreateProfileDto) {
   @IsString({ message: 'Aadhar number must be a string.' })
   @IsOptional()
   aadharNumber?: string;
+
+  @ApiProperty({
+    description: 'Company name',
+    example: '123456781234',
+    required: false,
+  })
+  @IsString({ message: 'Company Name must be a string.' })
+  @IsOptional()
+  companyName?: string;
 }

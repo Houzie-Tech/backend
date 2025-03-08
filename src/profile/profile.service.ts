@@ -23,6 +23,7 @@ export class ProfileService {
           aadharNumber: true,
           createdAt: true,
           updatedAt: true,
+          companyName: true,
         },
       });
       return profile;
