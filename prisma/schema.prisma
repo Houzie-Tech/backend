@@ -89,6 +89,25 @@ enum LeadSource {
   OTHER
 }
 
+enum RoomFurnishingItem {
+  AC
+  BED
+  MATTRESS
+  WARDROBE
+  STUDY_TABLE
+  CHAIR
+  GEYSER
+  EXHAUST
+}
+
+enum HouseFurnishingItem {
+  TV
+  FRIDGE
+  SOFA
+  DINING_TABLE
+  RO_WATER_PURIFIER
+}
+
 enum Amenities {
   WIFI
   TWO_WHEELER_PARKING
@@ -254,6 +273,17 @@ model Listing {
   sharingType    SharingType?
   unitsAvailable Int?
   roomSize       Float? // in sq ft
+
+  // New pre-occupied flow fields
+  roomFurnishingItems  RoomFurnishingItem[] // For detailed room furnishing
+  houseFurnishingItems HouseFurnishingItem[] // For detailed house furnishing
+
+  // Maintenance charges per person
+  maidChargesPerPerson    Float? // For cleaning + utensils
+  cookChargesPerPerson    Float?
+  wifiChargesPerPerson    Float?
+  otherMaintenanceCharges Float?
+  otherMaintenanceDetails String?
 
   // verified 
   verified     Boolean   @default(false)

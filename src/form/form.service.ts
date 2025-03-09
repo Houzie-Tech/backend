@@ -21,7 +21,18 @@ export class FormService {
     try {
       return await this.prisma.$transaction(
         async (prisma) => {
-          const { location, occupants, ...listingDetails } = createFormDto;
+          const {
+            location,
+            occupants,
+            roomFurnishingItems,
+            houseFurnishingItems,
+            maidChargesPerPerson,
+            cookChargesPerPerson,
+            wifiChargesPerPerson,
+            otherMaintenanceCharges,
+            otherMaintenanceDetails,
+            ...listingDetails
+          } = createFormDto;
 
           // Create location within the same transaction
           const locationDetails = await this.createLocationInTransaction(
@@ -34,10 +45,40 @@ export class FormService {
             );
           }
 
+          // Check if pre-occupied property type requires additional fields
+          const isPreoccupiedSpecialType =
+            listingDetails.isPreoccupied &&
+            ['VILLA', 'BUILDER_FLOOR', 'FLAT_APARTMENT'].includes(
+              listingDetails.propertyType,
+            );
+
           // Create the listing with all related records
           const listing = await prisma.listing.create({
             data: {
               ...listingDetails,
+              // Add pre-occupied specific fields only if applicable
+              ...(isPreoccupiedSpecialType && roomFurnishingItems
+                ? { roomFurnishingItems }
+                : {}),
+              ...(isPreoccupiedSpecialType && houseFurnishingItems
+                ? { houseFurnishingItems }
+                : {}),
+              ...(isPreoccupiedSpecialType && maidChargesPerPerson !== undefined
+                ? { maidChargesPerPerson }
+                : {}),
+              ...(isPreoccupiedSpecialType && cookChargesPerPerson !== undefined
+                ? { cookChargesPerPerson }
+                : {}),
+              ...(isPreoccupiedSpecialType && wifiChargesPerPerson !== undefined
+                ? { wifiChargesPerPerson }
+                : {}),
+              ...(isPreoccupiedSpecialType &&
+              otherMaintenanceCharges !== undefined
+                ? { otherMaintenanceCharges }
+                : {}),
+              ...(isPreoccupiedSpecialType && otherMaintenanceDetails
+                ? { otherMaintenanceDetails }
+                : {}),
               location: {
                 connect: {
                   id: locationDetails.id,
@@ -73,7 +114,7 @@ export class FormService {
             );
           }
 
-          // Fetch the listing with occupants data for the response
+          // Fetch the listing with occupants data and pre-occupied details for the response
           return prisma.listing.findUnique({
             where: { id: listing.id },
             include: {

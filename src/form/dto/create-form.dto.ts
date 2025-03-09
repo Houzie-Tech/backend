@@ -21,7 +21,9 @@ import {
   SharingType,
   Configuration,
   LockInPeriod,
-  Gender, // Added Gender enum import
+  Gender,
+  RoomFurnishingItem,
+  HouseFurnishingItem,
 } from '@prisma/client';
 import { LocationDto } from './location.dto';
 import { Type } from 'class-transformer';
@@ -50,14 +52,14 @@ export class OccupantDto {
   @IsOptional()
   about?: string;
 
-  // @ApiProperty({
-  //   enum: Gender,
-  //   example: 'MALE',
-  //   description: 'Gender of the occupant',
-  // })
-  // @IsEnum(Gender)
-  // @IsNotEmpty()
-  // gender: Gender;
+  @ApiProperty({
+    enum: Gender,
+    example: 'MALE',
+    description: 'Gender of the occupant',
+  })
+  @IsEnum(Gender)
+  @IsNotEmpty()
+  gender: Gender;
 }
 
 export class CreateFormDto {
@@ -205,7 +207,7 @@ export class CreateFormDto {
   @ApiProperty({
     enum: Gender,
     isArray: true,
-    example: ['MALE', 'cleeraFEMALE'],
+    example: ['MALE', 'FEMALE'],
     description: 'Preferred genders for tenants',
   })
   @IsArray()
@@ -242,4 +244,115 @@ export class CreateFormDto {
   @Type(() => OccupantDto)
   @IsOptional()
   occupants?: OccupantDto[];
+
+  // New pre-occupied flow fields
+
+  @ApiProperty({
+    enum: RoomFurnishingItem,
+    isArray: true,
+    example: ['AC', 'BED', 'WARDROBE'],
+    description: 'Room furnishing items available',
+    required: false,
+  })
+  @ValidateIf(
+    (o) =>
+      o.isPreoccupied === true &&
+      ['VILLA', 'BUILDER_FLOOR', 'FLAT_APARTMENT'].includes(o.propertyType),
+  )
+  @IsArray()
+  @IsEnum(RoomFurnishingItem, { each: true })
+  @IsOptional()
+  roomFurnishingItems?: RoomFurnishingItem[];
+
+  @ApiProperty({
+    enum: HouseFurnishingItem,
+    isArray: true,
+    example: ['TV', 'FRIDGE', 'SOFA'],
+    description: 'House furnishing items available',
+    required: false,
+  })
+  @ValidateIf(
+    (o) =>
+      o.isPreoccupied === true &&
+      ['VILLA', 'BUILDER_FLOOR', 'FLAT_APARTMENT'].includes(o.propertyType),
+  )
+  @IsArray()
+  @IsEnum(HouseFurnishingItem, { each: true })
+  @IsOptional()
+  houseFurnishingItems?: HouseFurnishingItem[];
+
+  @ApiProperty({
+    example: 1500,
+    description: 'Maid charges per person (cleaning + utensils)',
+    required: false,
+  })
+  @ValidateIf(
+    (o) =>
+      o.isPreoccupied === true &&
+      ['VILLA', 'BUILDER_FLOOR', 'FLAT_APARTMENT'].includes(o.propertyType),
+  )
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  maidChargesPerPerson?: number;
+
+  @ApiProperty({
+    example: 2000,
+    description: 'Cook charges per person',
+    required: false,
+  })
+  @ValidateIf(
+    (o) =>
+      o.isPreoccupied === true &&
+      ['VILLA', 'BUILDER_FLOOR', 'FLAT_APARTMENT'].includes(o.propertyType),
+  )
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  cookChargesPerPerson?: number;
+
+  @ApiProperty({
+    example: 500,
+    description: 'WiFi charges per person',
+    required: false,
+  })
+  @ValidateIf(
+    (o) =>
+      o.isPreoccupied === true &&
+      ['VILLA', 'BUILDER_FLOOR', 'FLAT_APARTMENT'].includes(o.propertyType),
+  )
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  wifiChargesPerPerson?: number;
+
+  @ApiProperty({
+    example: 300,
+    description: 'Any other maintenance charges per person',
+    required: false,
+  })
+  @ValidateIf(
+    (o) =>
+      o.isPreoccupied === true &&
+      ['VILLA', 'BUILDER_FLOOR', 'FLAT_APARTMENT'].includes(o.propertyType),
+  )
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  otherMaintenanceCharges?: number;
+
+  @ApiProperty({
+    example: 'Electricity and water bill charges',
+    description: 'Details about other maintenance charges',
+    required: false,
+  })
+  @ValidateIf(
+    (o) =>
+      o.isPreoccupied === true &&
+      o.otherMaintenanceCharges > 0 &&
+      ['VILLA', 'BUILDER_FLOOR', 'FLAT_APARTMENT'].includes(o.propertyType),
+  )
+  @IsString()
+  @IsOptional()
+  otherMaintenanceDetails?: string;
 }
