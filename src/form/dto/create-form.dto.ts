@@ -58,7 +58,7 @@ export class OccupantDto {
     description: 'Gender of the occupant',
   })
   @IsEnum(Gender)
-  @IsNotEmpty()
+  @IsOptional()
   gender: Gender;
 }
 
