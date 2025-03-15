@@ -5,9 +5,20 @@ import {
   IsArray,
   Min,
   Max,
+  IsString,
+  IsBoolean,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
-import { PreferredTenant, PropertyType, Gender } from '@prisma/client';
+import {
+  PreferredTenant,
+  PropertyType,
+  Gender,
+  Furnishing,
+  Amenities,
+  Features,
+  Configuration,
+  ListingStatus,
+} from '@prisma/client';
 
 export class PropertySearchDto {
   @IsOptional()
@@ -94,6 +105,7 @@ export class PropertySearchDto {
   limit?: number = 10;
 
   @IsOptional()
+  @IsEnum(PreferredTenant)
   preferredTenant?: PreferredTenant;
 
   @IsOptional()
@@ -109,4 +121,65 @@ export class PropertySearchDto {
     return [value];
   })
   preferredGender?: Gender[];
+
+  @IsOptional()
+  @IsEnum(Furnishing)
+  furnishing?: Furnishing;
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(Amenities, { each: true })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.split(',');
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return [value];
+  })
+  amenities?: Amenities[];
+
+  @IsOptional()
+  @IsArray()
+  @IsEnum(Features, { each: true })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.split(',');
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return [value];
+  })
+  features?: Features[];
+
+  @IsOptional()
+  @IsEnum(Configuration)
+  configuration?: Configuration;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  isActive?: boolean = true;
+
+  @IsOptional()
+  @IsEnum(ListingStatus)
+  status?: ListingStatus = 'ACTIVE';
+
+  @IsOptional()
+  @IsString()
+  sortBy?: string = 'createdAt';
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => {
+    if (value?.toLowerCase() === 'asc') return 'asc';
+    return 'desc';
+  })
+  sortOrder?: 'asc' | 'desc' = 'desc';
 }

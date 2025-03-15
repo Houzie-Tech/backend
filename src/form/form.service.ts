@@ -257,34 +257,43 @@ export class FormService {
         page = 1,
         limit = 10,
         preferredTenant,
-        preferredGender, // Extract preferredGender from searchParams
+        preferredGender,
+        furnishing,
+        amenities,
+        features,
+        configuration,
+        isActive = true,
+        sortBy = 'createdAt',
+        sortOrder = 'desc',
       } = searchParams;
 
       const skip = (page - 1) * limit;
       const where: Prisma.ListingWhereInput = {};
 
+      // Only add filters if they're explicitly provided
+      if (isActive !== undefined) {
+        where.isActive = isActive;
+      }
+
       // Price range filter
-      if (minPrice || maxPrice) {
-        where.price = {
-          gte: minPrice,
-          lte: maxPrice,
-        };
+      if (minPrice !== undefined || maxPrice !== undefined) {
+        where.price = {};
+        if (minPrice !== undefined) where.price.gte = minPrice;
+        if (maxPrice !== undefined) where.price.lte = maxPrice;
       }
 
-      // Bedrooms filter
-      if (minBedrooms || maxBedrooms) {
-        where.bedrooms = {
-          gte: minBedrooms,
-          lte: maxBedrooms,
-        };
+      // Bedrooms filter with null handling
+      if (minBedrooms !== undefined || maxBedrooms !== undefined) {
+        where.bedrooms = {};
+        if (minBedrooms !== undefined) where.bedrooms.gte = minBedrooms;
+        if (maxBedrooms !== undefined) where.bedrooms.lte = maxBedrooms;
       }
 
-      // Bathrooms filter
-      if (minBathrooms || maxBathrooms) {
-        where.bathrooms = {
-          gte: minBathrooms,
-          lte: maxBathrooms,
-        };
+      // Bathrooms filter with null handling
+      if (minBathrooms !== undefined || maxBathrooms !== undefined) {
+        where.bathrooms = {};
+        if (minBathrooms !== undefined) where.bathrooms.gte = minBathrooms;
+        if (maxBathrooms !== undefined) where.bathrooms.lte = maxBathrooms;
       }
 
       // Property type filter
@@ -297,14 +306,40 @@ export class FormService {
         where.preferredTenant = preferredTenant;
       }
 
-      // Preferred gender filter
+      // Preferred gender filter - ensure it's properly formatted as an array
       if (preferredGender?.length) {
         where.preferredGender = {
           hasSome: preferredGender,
         };
       }
 
-      // Location range filter
+      // Furnishing filter
+      if (furnishing) {
+        where.furnishing = furnishing;
+      }
+
+      // Amenities filter - ensure it's properly formatted as an array
+      if (amenities?.length) {
+        // For each amenity, we need to ensure the listing has that amenity
+        // Using hasSome to check if the listing's amenities array contains any of the requested amenities
+        where.amenities = {
+          hasSome: amenities,
+        };
+      }
+
+      // Features filter - ensure it's properly formatted as an array
+      if (features?.length) {
+        where.features = {
+          hasSome: features,
+        };
+      }
+
+      // Configuration filter
+      if (configuration) {
+        where.configuration = configuration;
+      }
+
+      // Location range filter - use database for initial filtering
       if (latitude !== undefined && longitude !== undefined) {
         const degreeRadius = (distanceInKm * 1.2) / 111.32;
         const minLat = latitude - degreeRadius;
@@ -315,84 +350,199 @@ export class FormService {
         const maxLng = longitude + longitudeRadius;
 
         where.location = {
-          AND: [
-            { latitude: { gte: minLat } },
-            { latitude: { lte: maxLat } },
-            { longitude: { gte: minLng } },
-            { longitude: { lte: maxLng } },
-          ],
+          latitude: {
+            gte: minLat,
+            lte: maxLat,
+          },
+          longitude: {
+            gte: minLng,
+            lte: maxLng,
+          },
         };
       }
 
-      // Get filtered listings
+      // Log the where clause for debugging
+      console.log('Query filters:', JSON.stringify(where, null, 2));
+
+      // Get filtered listings with sorting
       const listings = await this.prisma.listing.findMany({
         where,
-        select: {
-          id: true,
-          location: true,
-          brokerId: true,
-          isActive: true,
-          price: true,
-          propertyType: true,
-          bedrooms: true,
-          bathrooms: true,
-          mainImage: true,
-          photos: true,
-          title: true,
-          description: true,
-          isPreoccupied: true,
-          brokerage: true,
-          security: true,
-          maintenanceCharges: true,
-          isMaintenanceIncluded: true,
-          isNegotiable: true,
-          lockInPeriod: true,
-          availableFrom: true,
-          amenities: true,
-          balconies: true,
-          configuration: true,
-          features: true,
-          furnishing: true,
-          preferredTenant: true,
-          preferredGender: true, // Add preferredGender to the selection
+        select: this.getListingSelect(),
+        orderBy: {
+          [sortBy]: sortOrder,
         },
+        skip,
+        take: limit,
       });
 
-      // Apply exact distance filtering
-      let filteredListings = listings;
-      if (latitude !== undefined && longitude !== undefined) {
-        filteredListings = listings.filter((listing) => {
-          const distance = this.calculateDistance(
-            latitude,
-            longitude,
-            listing.location.latitude,
-            listing.location.longitude,
-          );
-          return distance <= distanceInKm;
+      // Count total matching records for pagination
+      const filteredCount = await this.prisma.listing.count({ where });
+
+      // If no results found with all filters, try with fewer filters
+      if (listings.length === 0) {
+        // Create a copy of the original where clause
+        const relaxedWhere = { ...where };
+
+        // Remove array-based filters first as they're more restrictive
+        delete relaxedWhere.amenities;
+        delete relaxedWhere.features;
+        delete relaxedWhere.preferredGender;
+
+        console.log('Relaxed filters:', JSON.stringify(relaxedWhere, null, 2));
+
+        // Try with relaxed filters
+        const relaxedListings = await this.prisma.listing.findMany({
+          where: relaxedWhere,
+          select: this.getListingSelect(),
+          orderBy: {
+            [sortBy]: sortOrder,
+          },
+          skip,
+          take: limit,
         });
+
+        // If we still have no results, use minimal filtering
+        if (relaxedListings.length === 0) {
+          console.log('Using minimal filters');
+
+          // Use only isActive filter to ensure we get some results
+          const minimalListings = await this.prisma.listing.findMany({
+            where: { isActive: true },
+            select: this.getListingSelect(),
+            orderBy: {
+              [sortBy]: sortOrder,
+            },
+            skip,
+            take: limit,
+          });
+
+          const totalCount = await this.prisma.listing.count({
+            where: { isActive: true },
+          });
+
+          return {
+            data: minimalListings,
+            metadata: {
+              total: totalCount,
+              filtered: minimalListings.length,
+              page,
+              limit,
+              totalPages: Math.ceil(totalCount / limit),
+            },
+          };
+        }
+
+        // Return relaxed filter results
+        const relaxedCount = await this.prisma.listing.count({
+          where: relaxedWhere,
+        });
+
+        return {
+          data: relaxedListings,
+          metadata: {
+            total: relaxedCount,
+            filtered: relaxedListings.length,
+            page,
+            limit,
+            totalPages: Math.ceil(relaxedCount / limit),
+          },
+        };
       }
 
-      // Apply pagination
-      const total = filteredListings.length;
-      const paginatedListings = filteredListings.slice(skip, skip + limit);
+      // Apply exact distance filtering if location is provided
+      let filteredListings = listings;
+      if (latitude !== undefined && longitude !== undefined) {
+        filteredListings = listings
+          .map((listing) => {
+            const distance = this.calculateDistance(
+              latitude,
+              longitude,
+              listing.location.latitude,
+              listing.location.longitude,
+            );
+            return { ...listing, distance };
+          })
+          .filter((listing) => listing.distance <= distanceInKm);
+
+        // If distance filtering removes all results, return original listings with distance
+        if (filteredListings.length === 0 && listings.length > 0) {
+          filteredListings = listings.map((listing) => {
+            const distance = this.calculateDistance(
+              latitude,
+              longitude,
+              listing.location.latitude,
+              listing.location.longitude,
+            );
+            return { ...listing, distance };
+          });
+        }
+      }
 
       return {
-        data: paginatedListings,
+        data: filteredListings,
         metadata: {
-          total,
+          total: filteredCount,
+          filtered: filteredListings.length,
           page,
           limit,
-          totalPages: Math.ceil(total / limit),
+          totalPages: Math.ceil(filteredCount / limit),
         },
       };
     } catch (error) {
+      console.error('Error in findAll:', error);
+
       if (error instanceof Prisma.PrismaClientValidationError) {
         throw new BadRequestException('Invalid filter parameters provided');
       }
+
       throw new InternalServerErrorException(
         'An error occurred while fetching listings',
       );
     }
+  }
+
+  // Helper method to define the select object for listings
+  private getListingSelect() {
+    return {
+      id: true,
+      location: true,
+      brokerId: true,
+      broker: {
+        select: {
+          name: true,
+          phoneNumber: true,
+          email: true,
+        },
+      },
+      isActive: true,
+      price: true,
+      propertyType: true,
+      bedrooms: true,
+      bathrooms: true,
+      mainImage: true,
+      photos: true,
+      title: true,
+      description: true,
+      isPreoccupied: true,
+      brokerage: true,
+      security: true,
+      maintenanceCharges: true,
+      isMaintenanceIncluded: true,
+      isNegotiable: true,
+      lockInPeriod: true,
+      availableFrom: true,
+      amenities: true,
+      balconies: true,
+      configuration: true,
+      features: true,
+      furnishing: true,
+      preferredTenant: true,
+      preferredGender: true,
+      createdAt: true,
+      updatedAt: true,
+      views: true,
+      status: true,
+    };
   }
 
   private calculateDistance(
