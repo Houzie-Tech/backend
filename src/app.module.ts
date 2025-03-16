@@ -8,6 +8,8 @@ import { BrokerModule } from './broker/broker.module';
 import { ProfileModule } from './profile/profile.module';
 import { AdminModule } from './admin/admin.module';
 import { ReportsModule } from './reports/reports.module';
+import { UserPreference } from './user_preference/userPrefernceCalculator.module';
+import { PropertyDescription } from './property_description/propertyDescription.module';
 @Module({
   imports: [
     PrismaModule,
@@ -22,6 +24,8 @@ import { ReportsModule } from './reports/reports.module';
     ProfileModule,
     AdminModule,
     ReportsModule,
+    UserPreference,
+    PropertyDescription,
   ],
   controllers: [],
   providers: [],
