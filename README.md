@@ -14,7 +14,7 @@ The server runs on port 3001 by default, but can be configured through the `PORT
 
 The application consists of the following modules, each with its own dedicated documentation:
 
-1. [PrismaModule](./docs/modules/prisma/README.md) - Database connectivity using Prisma ORM
+1. [PrismaModule](./docs/modules/prisma.md) - Database connectivity using Prisma ORM
 2. [AuthModule](./docs/modules/auth.md) - Authentication and authorization functionality
 3. [ConfigModule](./docs/modules/config.md) - Environment variable management
 4. [FormModule](./docs/modules/form.md) - Form processing and file uploads
