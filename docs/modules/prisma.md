@@ -87,6 +87,34 @@ Manages potential customer information:
 - Properties: id, name, contact details, budget range, preferences, status, priority
 - Relationships: listing, broker
 
+## Authentication Flow
+
+The schema supports multiple authentication methods:
+
+1. **Email/Password Authentication**:
+   - Users register with email and password
+   - Password is hashed using bcrypt before storage
+   - Login validates credentials against database records
+
+2. **OTP-based Authentication**:
+   - Supports both email and phone verification
+   - OTPs have configurable expiration periods
+   - Verification status tracked separately for email and phone
+
+3. **OAuth Integration**:
+   - Support for Google authentication
+   - Provider and providerId fields store OAuth identity
+   - Automatic user creation for first-time OAuth users
+
+## Token Management
+
+The RefreshToken model enables secure session management:
+
+- Access tokens contain user role and verification status
+- Refresh tokens stored in database with expiration dates
+- Token rotation implemented for security
+- Default 7-day validity for refresh tokens
+
 ## Enumerations
 
 The schema includes several enumerations to standardize data values:
