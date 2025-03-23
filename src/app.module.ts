@@ -10,6 +10,7 @@ import { AdminModule } from './admin/admin.module';
 import { ReportsModule } from './reports/reports.module';
 import { UserPreference } from './user_preference/userPrefernceCalculator.module';
 import { PropertyDescription } from './property_description/propertyDescription.module';
+import { MetroStationModule } from './metro-station/metro-station.module';
 @Module({
   imports: [
     PrismaModule,
@@ -26,6 +27,7 @@ import { PropertyDescription } from './property_description/propertyDescription.
     ReportsModule,
     UserPreference,
     PropertyDescription,
+    MetroStationModule,
   ],
   controllers: [],
   providers: [],

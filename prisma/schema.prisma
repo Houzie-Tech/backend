@@ -423,3 +423,14 @@ model Lead {
 
   @@index([phoneNumber])
 }
+
+model MetroStation {
+  id        Int      @id @default(autoincrement())
+  name      String
+  line      String
+  latitude  Float
+  longitude Float
+  city      String   @default("Gurgaon")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

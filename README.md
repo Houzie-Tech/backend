@@ -16,15 +16,14 @@ The application consists of the following modules, each with its own dedicated d
 
 1. [PrismaModule](./docs/modules/prisma.md) - Database connectivity using Prisma ORM
 2. [AuthModule](./docs/modules/auth.md) - Authentication and authorization functionality
-3. [ConfigModule](./docs/modules/config.md) - Environment variable management
-4. [FormModule](./docs/modules/form.md) - Form processing and file uploads
-5. [BrokerModule](./docs/modules/broker.md) - Message broker functionality
-6. [LeadsModule](./docs/modules/leads.md) - Lead generation and tracking
-7. [ProfileModule](./docs/modules/profile.md) - User profile management
-8. [AdminModule](./docs/modules/admin.md) - Administrative functionality
-9. [ReportsModule](./docs/modules/reports.md) - Reporting and analytics
-10. [UserPreference](./docs/modules/user-preference.md) - User preference calculations
-11. [PropertyDescription](./docs/modules/property-description.md) - Property descriptions for listings
+3. [FormModule](./docs/modules/form.md) - Form processing and file uploads
+4. [BrokerModule](./docs/modules/broker.md) - Message broker functionality
+5. [LeadsModule](./docs/modules/leads.md) - Lead generation and tracking
+6. [ProfileModule](./docs/modules/profile.md) - User profile management
+7. [AdminModule](./docs/modules/admin.md) - Administrative functionality
+8. [ReportsModule](./docs/modules/reports.md) - Reporting and analytics
+9. [UserPreference](./docs/modules/user-preference.md) - User preference calculations
+10. [PropertyDescription](./docs/modules/property-description.md) - Property descriptions for listings
 
 ### Validation
 
@@ -92,4 +91,3 @@ npm run start:dev
 ```
 
 6. Access the API documentation at `http://localhost:3001/api`
-
