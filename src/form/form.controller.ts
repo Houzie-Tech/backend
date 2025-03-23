@@ -56,6 +56,17 @@ export class FormController {
     return this.formService.update(id, updateFormDto, userId);
   }
 
+  @Get('near-metro/:metroStationId')
+  findPropertiesNearMetro(
+    @Param('metroStationId') metroStationId: string,
+    @Query('maxDistance') maxDistance?: string,
+  ) {
+    return this.formService.findPropertiesNearMetro(
+      metroStationId,
+      maxDistance ? parseFloat(maxDistance) : undefined,
+    );
+  }
+
   @UseGuards(AuthGuard)
   @Delete(':id')
   remove(@Param('id') id: string, @GetUser('sub') userId: string) {

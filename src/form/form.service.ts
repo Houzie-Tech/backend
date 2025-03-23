@@ -12,10 +12,14 @@ import { LocationDto } from './dto/location.dto';
 import { Prisma } from '@prisma/client';
 import { PropertySearchDto } from './dto/property-search.dto';
 import { generateAiDescription } from './util/listingsAi.util';
+import { MetroStationService } from 'src/metro-station/metro-station.service';
 
 @Injectable()
 export class FormService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private metroStationService: MetroStationService,
+  ) {}
 
   async create(createFormDto: CreateFormDto, brokerId: string) {
     try {
@@ -241,7 +245,16 @@ export class FormService {
     });
   }
 
-  async findAll(searchParams: PropertySearchDto) {
+  async findAll(searchParams: PropertySearchDto): Promise<{
+    data: (ReturnType<typeof this.getListingSelect> & { distance?: number })[];
+    metadata: {
+      total: number;
+      filtered: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> {
     try {
       const {
         minPrice,
@@ -253,7 +266,7 @@ export class FormService {
         propertyType,
         latitude,
         longitude,
-        distanceInKm = 10,
+        distanceInKm = 50,
         page = 1,
         limit = 10,
         preferredTenant,
@@ -452,30 +465,32 @@ export class FormService {
       // Apply exact distance filtering if location is provided
       let filteredListings = listings;
       if (latitude !== undefined && longitude !== undefined) {
-        filteredListings = listings
-          .map((listing) => {
-            const distance = this.calculateDistance(
-              latitude,
-              longitude,
-              listing.location.latitude,
-              listing.location.longitude,
-            );
-            return { ...listing, distance };
-          })
-          .filter((listing) => listing.distance <= distanceInKm);
+        filteredListings = (
+          await Promise.all(
+            listings.map(async (listing) => {
+              const distance = this.calculateDistance(
+                latitude,
+                longitude,
+                listing.location.latitude,
+                listing.location.longitude,
+              );
 
-        // If distance filtering removes all results, return original listings with distance
-        if (filteredListings.length === 0 && listings.length > 0) {
-          filteredListings = listings.map((listing) => {
-            const distance = this.calculateDistance(
-              latitude,
-              longitude,
-              listing.location.latitude,
-              listing.location.longitude,
-            );
-            return { ...listing, distance };
-          });
-        }
+              // Find nearby metro stations for each listing
+              const nearbyMetroStations =
+                await this.metroStationService.findNearbyMetroStations(
+                  listing.location.latitude,
+                  listing.location.longitude,
+                  1000,
+                );
+
+              return {
+                ...listing,
+                distance,
+                nearbyMetroStations,
+              } as typeof listing & { distance: number };
+            }),
+          )
+        ).filter((listing) => listing.distance <= distanceInKm);
       }
 
       return {
@@ -497,6 +512,60 @@ export class FormService {
 
       throw new InternalServerErrorException(
         'An error occurred while fetching listings',
+      );
+    }
+  }
+
+  async findPropertiesNearMetro(
+    metroStationId: string,
+    maxDistance: number = 2,
+  ) {
+    try {
+      // Get the metro station details
+      const metroStation = await this.prisma.metroStation.findUnique({
+        where: { id: parseInt(metroStationId) },
+      });
+
+      if (!metroStation) {
+        throw new NotFoundException(
+          `Metro station #${metroStationId} not found`,
+        );
+      }
+
+      // Get all active listings
+      const listings = await this.prisma.listing.findMany({
+        where: { isActive: true },
+        select: this.getListingSelect(),
+      });
+
+      // Calculate distance for each listing and filter
+      const nearbyListings = listings
+        .map((listing) => {
+          const distance = this.calculateDistance(
+            metroStation.latitude,
+            metroStation.longitude,
+            listing.location.latitude,
+            listing.location.longitude,
+          );
+          return {
+            ...listing,
+            distanceToMetro: parseFloat(distance.toFixed(2)),
+          };
+        })
+        .filter((listing) => listing.distanceToMetro <= maxDistance)
+        .sort((a, b) => a.distanceToMetro - b.distanceToMetro);
+
+      return {
+        data: nearbyListings,
+        metadata: {
+          total: nearbyListings.length,
+          metroStation: metroStation.name,
+        },
+      };
+    } catch (error) {
+      console.error('Error finding properties near metro:', error);
+      throw new InternalServerErrorException(
+        'An error occurred while fetching properties near metro station',
       );
     }
   }
@@ -591,6 +660,13 @@ export class FormService {
         throw new NotFoundException(`Listing #${id} not found`);
       }
 
+      const nearbyMetroStations =
+        await this.metroStationService.findNearbyMetroStations(
+          listing.location.latitude,
+          listing.location.longitude,
+          10000,
+        );
+
       let aiGeneratedDescription: string | null = null;
 
       if (listing.descriptionAi && userId) {
@@ -614,10 +690,10 @@ export class FormService {
       // Prepare the final description
       const newDescription = aiGeneratedDescription || listing.description;
 
-      // Return the updated listing with the new description
       return {
         ...listing,
-        description: newDescription, // Override the original description with AI-generated one (if available)
+        description: newDescription,
+        nearbyMetroStations,
       };
     } catch (error) {
       console.error('Error in findOne:', error);
