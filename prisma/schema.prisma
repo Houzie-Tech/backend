@@ -316,6 +316,9 @@ model Listing {
   reports  Report[]
   Occupant Occupant[]
 
+  // Add the metro station relationship
+  metroStations ListingMetroStation[]
+
   @@index([price, locationId])
 }
 
@@ -433,4 +436,27 @@ model MetroStation {
   city      String   @default("Gurgaon")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  listings ListingMetroStation[]
+}
+
+// Junction table with distance information
+model ListingMetroStation {
+  id             String       @id @default(uuid())
+  listing        Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId      String
+  metroStation   MetroStation @relation(fields: [metroStationId], references: [id], onDelete: Cascade)
+  metroStationId Int
+
+  // Store the distance between the listing and metro station
+  distanceInKm   Float
+  walkingTimeMin Int?
+  drivingTimeMin Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([listingId, metroStationId])
+  @@index([listingId])
+  @@index([metroStationId])
 }

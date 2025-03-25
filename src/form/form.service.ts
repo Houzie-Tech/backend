@@ -13,208 +13,51 @@ import { Prisma } from '@prisma/client';
 import { PropertySearchDto } from './dto/property-search.dto';
 import { generateAiDescription } from './util/listingsAi.util';
 import { MetroStationService } from 'src/metro-station/metro-station.service';
+import { ListingMetroService } from './services/listing-metro.service';
+import { ListingCreator } from './services/listing-creator.service';
 
 @Injectable()
 export class FormService {
   constructor(
     private prisma: PrismaService,
     private metroStationService: MetroStationService,
+    private listingMetroService: ListingMetroService,
+    private listingCreator: ListingCreator,
   ) {}
 
   async create(createFormDto: CreateFormDto, brokerId: string) {
     try {
       return await this.prisma.$transaction(
         async (prisma) => {
-          const {
-            location,
-            occupants,
-            roomFurnishingItems,
-            houseFurnishingItems,
-            maidChargesPerPerson,
-            cookChargesPerPerson,
-            wifiChargesPerPerson,
-            otherMaintenanceCharges,
-            otherMaintenanceDetails,
-            ...listingDetails
-          } = createFormDto;
-
-          // Create location within the same transaction
-          const locationDetails = await this.createLocationInTransaction(
-            location,
+          // ListingCreator service to create the listing
+          const listing = await this.listingCreator.createListing(
             prisma,
+            createFormDto,
+            brokerId,
           );
-          if (!locationDetails) {
-            throw new InternalServerErrorException(
-              'Failed to create or find location',
-            );
-          }
-
-          // Check if pre-occupied property type requires additional fields
-          const isPreoccupiedSpecialType =
-            listingDetails.isPreoccupied &&
-            ['VILLA', 'BUILDER_FLOOR', 'FLAT_APARTMENT'].includes(
-              listingDetails.propertyType,
-            );
-
-          // Create the listing with all related records
-          const listing = await prisma.listing.create({
-            data: {
-              ...listingDetails,
-              // Add pre-occupied specific fields only if applicable
-              ...(isPreoccupiedSpecialType && roomFurnishingItems
-                ? { roomFurnishingItems }
-                : {}),
-              ...(isPreoccupiedSpecialType && houseFurnishingItems
-                ? { houseFurnishingItems }
-                : {}),
-              ...(isPreoccupiedSpecialType && maidChargesPerPerson !== undefined
-                ? { maidChargesPerPerson }
-                : {}),
-              ...(isPreoccupiedSpecialType && cookChargesPerPerson !== undefined
-                ? { cookChargesPerPerson }
-                : {}),
-              ...(isPreoccupiedSpecialType && wifiChargesPerPerson !== undefined
-                ? { wifiChargesPerPerson }
-                : {}),
-              ...(isPreoccupiedSpecialType &&
-              otherMaintenanceCharges !== undefined
-                ? { otherMaintenanceCharges }
-                : {}),
-              ...(isPreoccupiedSpecialType && otherMaintenanceDetails
-                ? { otherMaintenanceDetails }
-                : {}),
-              location: {
-                connect: {
-                  id: locationDetails.id,
-                },
-              },
-              broker: {
-                connect: {
-                  id: brokerId,
-                },
-              },
+          await this.listingMetroService.createMetroStationRelations(
+            prisma,
+            listing.id,
+            {
+              latitude: listing.location.latitude,
+              longitude: listing.location.longitude,
             },
-          });
+          );
 
-          // If the property is pre-occupied and occupants data is provided, create occupant records
-          if (
-            listingDetails.isPreoccupied &&
-            occupants &&
-            occupants.length > 0
-          ) {
-            await Promise.all(
-              occupants.map((occupant) =>
-                prisma.occupant.create({
-                  data: {
-                    ...occupant,
-                    listing: {
-                      connect: {
-                        id: listing.id,
-                      },
-                    },
-                  },
-                }),
-              ),
-            );
-          }
-
-          // Fetch the listing with occupants data and pre-occupied details for the response
-          return prisma.listing.findUnique({
-            where: { id: listing.id },
-            include: {
-              Occupant: true,
-            },
-          });
+          // Fetch the complete listing with all related data
+          return this.listingCreator.fetchListingWithDetails(
+            prisma,
+            listing.id,
+          );
         },
         {
-          // Transaction configuration
-          maxWait: 5000, // 5s maximum waiting time
-          timeout: 10000, // 10s maximum transaction time
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable, // Highest isolation level
+          maxWait: 5000,
+          timeout: 10000,
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         },
       );
     } catch (error) {
-      console.log('error', error);
-      if (error instanceof NotFoundException) {
-        throw error; // Re-throw NotFoundException as is
-      }
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // Handle specific Prisma errors
-        switch (error.code) {
-          case 'P2002': // Unique constraint violation
-            throw new ConflictException(
-              'A listing with these details already exists',
-            );
-          case 'P2003': // Foreign key constraint failure
-            throw new BadRequestException(
-              'Invalid reference to related record',
-            );
-          case 'P2025': // Record not found
-            throw new NotFoundException('Required record not found');
-          default:
-            throw new InternalServerErrorException(
-              `Database error occurred: ${error.message}`,
-            );
-        }
-      }
-      if (error instanceof Prisma.PrismaClientValidationError) {
-        throw new BadRequestException('Invalid data provided');
-      }
-      // Handle any other unexpected errors
-      throw new InternalServerErrorException(
-        'An unexpected error occurred while creating the listing',
-      );
-    }
-  }
-
-  private async createLocationInTransaction(
-    locationDetails: LocationDto,
-    prisma: Prisma.TransactionClient,
-  ) {
-    const { city, state, country, latitude, longitude } = locationDetails;
-
-    try {
-      // Check if location exists
-      const existingLocation = await prisma.location.findFirst({
-        where: {
-          latitude,
-          longitude,
-        },
-      });
-
-      if (existingLocation) {
-        return existingLocation;
-      }
-      // Create new location
-      return await prisma.location.create({
-        data: {
-          city,
-          state,
-          country,
-          latitude,
-          longitude,
-        },
-      });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        switch (error.code) {
-          case 'P2002':
-            // Handle potential race condition where location was created between check and create
-            const location = await prisma.location.findFirst({
-              where: {
-                latitude,
-                longitude,
-              },
-            });
-            if (location) return location;
-            throw new ConflictException('Location already exists');
-          default:
-            throw new InternalServerErrorException(
-              `Failed to create location: ${error.message}`,
-            );
-        }
-      }
-      throw error;
+      this.handleError(error);
     }
   }
 
@@ -377,10 +220,20 @@ export class FormService {
       // Log the where clause for debugging
       console.log('Query filters:', JSON.stringify(where, null, 2));
 
-      // Get filtered listings with sorting
+      // Get filtered listings with sorting and include metro stations
       const listings = await this.prisma.listing.findMany({
         where,
-        select: this.getListingSelect(),
+        select: {
+          ...this.getListingSelect(),
+          metroStations: {
+            include: {
+              metroStation: true,
+            },
+            orderBy: {
+              distanceInKm: 'asc',
+            },
+          },
+        },
         orderBy: {
           [sortBy]: sortOrder,
         },
@@ -406,7 +259,17 @@ export class FormService {
         // Try with relaxed filters
         const relaxedListings = await this.prisma.listing.findMany({
           where: relaxedWhere,
-          select: this.getListingSelect(),
+          select: {
+            ...this.getListingSelect(),
+            metroStations: {
+              include: {
+                metroStation: true,
+              },
+              orderBy: {
+                distanceInKm: 'asc',
+              },
+            },
+          },
           orderBy: {
             [sortBy]: sortOrder,
           },
@@ -421,7 +284,17 @@ export class FormService {
           // Use only isActive filter to ensure we get some results
           const minimalListings = await this.prisma.listing.findMany({
             where: { isActive: true },
-            select: this.getListingSelect(),
+            select: {
+              ...this.getListingSelect(),
+              metroStations: {
+                include: {
+                  metroStation: true,
+                },
+                orderBy: {
+                  distanceInKm: 'asc',
+                },
+              },
+            },
             orderBy: {
               [sortBy]: sortOrder,
             },
@@ -433,11 +306,24 @@ export class FormService {
             where: { isActive: true },
           });
 
+          // Format the listings to include metro stations in a cleaner format
+          const formattedListings = minimalListings.map((listing) => {
+            const { metroStations, ...listingWithoutMetroStations } = listing;
+            return {
+              ...listingWithoutMetroStations,
+              nearbyMetroStations: metroStations.map((relation) => ({
+                id: relation.metroStation.id,
+                name: relation.metroStation.name,
+                line: relation.metroStation.line,
+              })),
+            };
+          });
+
           return {
-            data: minimalListings,
+            data: formattedListings,
             metadata: {
               total: totalCount,
-              filtered: minimalListings.length,
+              filtered: formattedListings.length,
               page,
               limit,
               totalPages: Math.ceil(totalCount / limit),
@@ -445,16 +331,29 @@ export class FormService {
           };
         }
 
+        // Format the relaxed listings
+        const formattedRelaxedListings = relaxedListings.map((listing) => {
+          const { metroStations, ...listingWithoutMetroStations } = listing;
+          return {
+            ...listingWithoutMetroStations,
+            nearbyMetroStations: metroStations.map((relation) => ({
+              id: relation.metroStation.id,
+              name: relation.metroStation.name,
+              line: relation.metroStation.line,
+            })),
+          };
+        });
+
         // Return relaxed filter results
         const relaxedCount = await this.prisma.listing.count({
           where: relaxedWhere,
         });
 
         return {
-          data: relaxedListings,
+          data: formattedRelaxedListings,
           metadata: {
             total: relaxedCount,
-            filtered: relaxedListings.length,
+            filtered: formattedRelaxedListings.length,
             page,
             limit,
             totalPages: Math.ceil(relaxedCount / limit),
@@ -462,57 +361,49 @@ export class FormService {
         };
       }
 
+      // Format the listings to include metro stations in a cleaner format
+      let formattedListings = listings.map((listing) => {
+        const { metroStations, ...listingWithoutMetroStations } = listing;
+        return {
+          ...listingWithoutMetroStations,
+          nearbyMetroStations: metroStations.map((relation) => ({
+            id: relation.metroStation.id,
+            name: relation.metroStation.name,
+            line: relation.metroStation.line,
+            distanceInKm: relation.distanceInKm,
+            walkingTimeMin: relation.walkingTimeMin,
+          })),
+        };
+      });
+
       // Apply exact distance filtering if location is provided
-      let filteredListings = listings;
       if (latitude !== undefined && longitude !== undefined) {
-        filteredListings = (
-          await Promise.all(
-            listings.map(async (listing) => {
-              const distance = this.calculateDistance(
-                latitude,
-                longitude,
-                listing.location.latitude,
-                listing.location.longitude,
-              );
-
-              // Find nearby metro stations for each listing
-              const nearbyMetroStations =
-                await this.metroStationService.findNearbyMetroStations(
-                  listing.location.latitude,
-                  listing.location.longitude,
-                  1000,
-                );
-
-              return {
-                ...listing,
-                distance,
-                nearbyMetroStations,
-              } as typeof listing & { distance: number };
-            }),
-          )
-        ).filter((listing) => listing.distance <= distanceInKm);
+        // Calculate distance from search location to each listing
+        formattedListings = formattedListings
+          .map((listing) => {
+            const distance = this.calculateDistance(
+              latitude,
+              longitude,
+              listing.location.latitude,
+              listing.location.longitude,
+            );
+            return { ...listing, distance };
+          })
+          .filter((listing) => listing.distance <= distanceInKm);
       }
 
       return {
-        data: filteredListings,
+        data: formattedListings,
         metadata: {
           total: filteredCount,
-          filtered: filteredListings.length,
+          filtered: formattedListings.length,
           page,
           limit,
           totalPages: Math.ceil(filteredCount / limit),
         },
       };
     } catch (error) {
-      console.error('Error in findAll:', error);
-
-      if (error instanceof Prisma.PrismaClientValidationError) {
-        throw new BadRequestException('Invalid filter parameters provided');
-      }
-
-      throw new InternalServerErrorException(
-        'An error occurred while fetching listings',
-      );
+      this.handleError(error);
     }
   }
 
@@ -764,5 +655,34 @@ export class FormService {
     });
 
     return { message: 'Listing deleted successfully' };
+  }
+
+  private handleError(error: any) {
+    console.log('error', error);
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      switch (error.code) {
+        case 'P2002':
+          throw new ConflictException(
+            'A listing with these details already exists',
+          );
+        case 'P2003':
+          throw new BadRequestException('Invalid reference to related record');
+        case 'P2025':
+          throw new NotFoundException('Required record not found');
+        default:
+          throw new InternalServerErrorException(
+            `Database error occurred: ${error.message}`,
+          );
+      }
+    }
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      throw new BadRequestException('Invalid data provided');
+    }
+    throw new InternalServerErrorException(
+      'An unexpected error occurred while creating the listing',
+    );
   }
 }
