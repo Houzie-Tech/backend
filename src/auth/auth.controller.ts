@@ -14,6 +14,11 @@ import { Request } from 'express';
 import { LoginEmailDto } from './dto/email_pw.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { ConfigService } from '@nestjs/config';
+import {
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  VerifyResetTokenDto,
+} from './dto/password-reset.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -110,6 +115,55 @@ export class AuthController {
     } catch (error) {
       this.logger.warn('Token refresh failed');
       throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    try {
+      await this.authService.sendPasswordResetEmail(forgotPasswordDto.email);
+      return {
+        status: 'success',
+        message: 'If the email exists, a password reset link has been sent.',
+      };
+    } catch (error) {
+      this.logger.error('Password reset request failed', error.stack);
+      throw error;
+    }
+  }
+
+  @Post('verify-reset-token')
+  async verifyResetToken(@Body() verifyDto: VerifyResetTokenDto) {
+    try {
+      const isValid = await this.authService.verifyResetToken(
+        verifyDto.userId,
+        verifyDto.token,
+      );
+      return {
+        status: 'success',
+        isValid,
+      };
+    } catch (error) {
+      this.logger.error('Token verification failed', error.stack);
+      throw error;
+    }
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    try {
+      await this.authService.resetPassword(
+        resetPasswordDto.userId,
+        resetPasswordDto.token,
+        resetPasswordDto.newPassword,
+      );
+      return {
+        status: 'success',
+        message: 'Password has been successfully reset.',
+      };
+    } catch (error) {
+      this.logger.error('Password reset failed', error.stack);
+      throw error;
     }
   }
 }

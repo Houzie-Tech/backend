@@ -14,6 +14,8 @@ import { otp, auth } from './dto';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import { LoginEmailDto } from './dto/email_pw.dto';
+import { randomBytes } from 'crypto';
+import { MailerService } from 'src/mail/mail.service';
 
 //TODO implement timeout for email and otp
 
@@ -23,6 +25,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private otpService: OTPService,
+    private mailerService: MailerService,
   ) {}
 
   async register(registerDto: auth.RegisterAuthDto) {
@@ -424,6 +427,93 @@ export class AuthService {
       return tokens;
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  async sendPasswordResetEmail(email: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+        include: { userAuth: true },
+      });
+
+      if (!user) {
+        return;
+      }
+
+      const resetToken = randomBytes(32).toString('hex');
+      const tokenHash = await bcrypt.hash(resetToken, 10);
+
+      await this.prisma.userAuth.update({
+        where: { id: user.userAuth.id },
+        data: {
+          resetToken: tokenHash,
+          tokenCreatedAt: new Date(),
+        },
+      });
+
+      // Send email with reset link
+      const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+      await this.mailerService.sendPasswordResetEmail(user.email, resetLink);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error sending password reset email',
+      );
+    }
+  }
+
+  async resetPassword(
+    userId: string,
+    token: string,
+    newPassword: string,
+  ): Promise<void> {
+    const isValidToken = await this.verifyResetToken(userId, token);
+
+    if (!isValidToken) {
+      throw new UnauthorizedException(
+        'Invalid or expired password reset token',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.userAuth.update({
+      where: { userId },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        tokenCreatedAt: null,
+      },
+    });
+  }
+
+  async verifyResetToken(userId: string, token: string): Promise<boolean> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { userAuth: true },
+      });
+
+      if (!user || !user.userAuth.resetToken || !user.userAuth.tokenCreatedAt) {
+        return false;
+      }
+
+      // Check if token is expired (24 hours)
+      const tokenAge =
+        (new Date().getTime() - user.userAuth.tokenCreatedAt.getTime()) /
+        (1000 * 60 * 60);
+      if (tokenAge > 24) {
+        return false;
+      }
+
+      // Verify the token
+      const isValidToken = await bcrypt.compare(
+        token,
+        user.userAuth.resetToken,
+      );
+      return isValidToken;
+    } catch (error) {
+      return false;
     }
   }
 

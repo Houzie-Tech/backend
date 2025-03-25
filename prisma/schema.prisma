@@ -198,6 +198,9 @@ model UserAuth {
   providerId      String? @unique
   accessToken     String?
 
+  resetToken     String?   @unique
+  tokenCreatedAt DateTime?
+
   otps          OTP[]
   refreshTokens RefreshToken[]
 
