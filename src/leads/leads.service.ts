@@ -76,11 +76,25 @@ export class LeadsService {
           },
         ];
       }
-
-      return await this.prisma.lead.findMany({
-        where: filters,
-        orderBy: { createdAt: 'desc' },
-      });
+      return await this.prisma.lead
+        .findMany({
+          where: filters,
+          include: {
+            listing: {
+              select: {
+                title: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+        .then((leads) =>
+          leads.map((lead) => ({
+            ...lead,
+            propertyName: lead.listing?.title || 'N/A',
+            listing: undefined,
+          })),
+        );
     } catch (error) {
       console.error('Error fetching leads:', error);
       throw new Error('An unexpected error occurred while fetching leads.');

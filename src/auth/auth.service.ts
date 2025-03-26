@@ -445,12 +445,19 @@ export class AuthService {
       const tokenHash = await bcrypt.hash(resetToken, 10);
 
       await this.prisma.userAuth.update({
-        where: { id: user.userAuth.id },
+        where: { id: user.userAuth.id }, // Use the primary key
         data: {
           resetToken: tokenHash,
           tokenCreatedAt: new Date(),
         },
       });
+
+      const user2 = await this.prisma.userAuth.findUnique({
+        where: {
+          id: user.userAuth.id,
+        },
+      });
+      console.log('🚀 ~ AuthService ~ sendPasswordResetEmail ~ user2:', user2);
 
       // Send email with reset link
       const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
@@ -493,6 +500,7 @@ export class AuthService {
         where: { id: userId },
         include: { userAuth: true },
       });
+      console.log('🚀 ~ AuthService ~ verifyResetToken ~ user:', user);
 
       if (!user || !user.userAuth.resetToken || !user.userAuth.tokenCreatedAt) {
         return false;
@@ -510,6 +518,10 @@ export class AuthService {
       const isValidToken = await bcrypt.compare(
         token,
         user.userAuth.resetToken,
+      );
+      console.log(
+        '🚀 ~ AuthService ~ verifyResetToken ~ isValidToken:',
+        isValidToken,
       );
       return isValidToken;
     } catch (error) {
