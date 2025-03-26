@@ -187,8 +187,6 @@ model User {
   Lead             Lead[]
   userAuth         UserAuth?
   Report           Report[]
-  Preferences      Preferences[]
-  Preferences      Preferences[]
 }
 
 model UserAuth {
@@ -327,65 +325,6 @@ model Listing {
   @@index([price, locationId])
 }
 
-model Preferences {
-  id            String       @id @default(uuid())
-  title         String
-  message       String       @default("")
-  propertyType  PropertyType
-  isPreoccupied Boolean      @default(false)
-
-  price         Float // Monthly rent or selling price
-  security      Float         @default(0)
-  brokerage     Float         @default(0)
-  isNegotiable  Boolean       @default(false)
-  lockInPeriod  LockInPeriod?
-  availableFrom DateTime?     @default(now())
-
-  configuration         Configuration?
-  bedrooms              Int?
-  bathrooms             Int?
-  balconies             Int?
-  floorNumber           String?
-  totalFloors           Int? // For Villa
-  maintenanceCharges    Float?
-  isMaintenanceIncluded Boolean        @default(true)
-
-  // Co-living/PG specific
-  roomType       String? // "1 Room" or "1 RK" for coliving
-  sharingType    SharingType?
-  unitsAvailable Int?
-  roomSize       Float? // in sq ft
-
-  // New pre-occupied flow fields
-  roomFurnishingItems  RoomFurnishingItem[] // For detailed room furnishing
-  houseFurnishingItems HouseFurnishingItem[] // For detailed house furnishing
-
-  // Maintenance charges per person
-  maidChargesPerPerson    Float? // For cleaning + utensils
-  cookChargesPerPerson    Float?
-  wifiChargesPerPerson    Float?
-  otherMaintenanceCharges Float?
-  otherMaintenanceDetails String?
-
-  // Features and Amenities
-  amenities Amenities[]
-  features  Features[]
-
-  furnishing       Furnishing?
-  furnishingExtras String[]
-
-  preferredTenant PreferredTenant?
-  preferredGender Gender[]
-
-  locationId String
-  location   Location @relation(fields: [locationId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([price, locationId])
-}
-
 model Occupant {
   id         String  @id @default(uuid())
   name       String
@@ -398,10 +337,8 @@ model Occupant {
   listingId String
   listing   Listing @relation(fields: [listingId], references: [id])
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  Preferences   Preferences? @relation(fields: [preferencesId], references: [id])
-  preferencesId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([listingId])
 }
@@ -417,24 +354,20 @@ model Report {
   listingId String
   listing   Listing @relation(fields: [listingId], references: [id])
 
-  reportedById  String
-  reportedBy    User         @relation(fields: [reportedById], references: [id])
-  Preferences   Preferences? @relation(fields: [preferencesId], references: [id])
-  preferencesId String?
+  reportedById String
+  reportedBy   User   @relation(fields: [reportedById], references: [id])
 
   @@index([listingId])
   @@index([reportedById])
 }
 
 model FavoriteListing {
-  id            String       @id @default(uuid())
-  user          User         @relation(fields: [userId], references: [id])
-  userId        String
-  listing       Listing      @relation(fields: [listingId], references: [id])
-  listingId     String
-  createdAt     DateTime     @default(now())
-  Preferences   Preferences? @relation(fields: [preferencesId], references: [id])
-  preferencesId String?
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  listingId String
+  createdAt DateTime @default(now())
 
   @@unique([userId, listingId])
   @@index([userId])
@@ -442,14 +375,12 @@ model FavoriteListing {
 }
 
 model VisitedListing {
-  id            String       @id @default(uuid())
-  user          User         @relation(fields: [userId], references: [id])
-  userId        String
-  listing       Listing      @relation(fields: [listingId], references: [id])
-  listingId     String
-  visitedAt     DateTime     @default(now())
-  Preferences   Preferences? @relation(fields: [preferencesId], references: [id])
-  preferencesId String?
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  listingId String
+  visitedAt DateTime @default(now())
 
   @@unique([userId, listingId])
   @@index([userId])
@@ -457,14 +388,13 @@ model VisitedListing {
 }
 
 model Location {
-  id          String        @id @default(uuid())
-  city        String // City where the property is located
-  state       String // State/Province
-  country     String // Country
-  latitude    Float // Geographical latitude
-  longitude   Float // Geographical longitude
-  listings    Listing[]
-  Preferences Preferences[]
+  id        String    @id @default(uuid())
+  city      String // City where the property is located
+  state     String // State/Province
+  country   String // Country
+  latitude  Float // Geographical latitude
+  longitude Float // Geographical longitude
+  listings  Listing[]
 
   @@unique([latitude, longitude])
 }
@@ -491,13 +421,11 @@ model Lead {
   listingId String?
   listing   Listing? @relation(fields: [listingId], references: [id])
 
-  brokerId      String
-  broker        User         @relation(fields: [brokerId], references: [id])
-  source        LeadSource   @default(DIRECT)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  Preferences   Preferences? @relation(fields: [preferencesId], references: [id])
-  preferencesId String?
+  brokerId  String
+  broker    User       @relation(fields: [brokerId], references: [id])
+  source    LeadSource @default(DIRECT)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@index([phoneNumber])
 }
@@ -528,10 +456,8 @@ model ListingMetroStation {
   walkingTimeMin Int?
   drivingTimeMin Int?
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  Preferences   Preferences? @relation(fields: [preferencesId], references: [id])
-  preferencesId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([listingId, metroStationId])
   @@index([listingId])
