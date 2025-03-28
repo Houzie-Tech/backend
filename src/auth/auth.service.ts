@@ -457,7 +457,6 @@ export class AuthService {
           id: user.userAuth.id,
         },
       });
-      console.log('🚀 ~ AuthService ~ sendPasswordResetEmail ~ user2:', user2);
 
       // Send email with reset link
       const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;

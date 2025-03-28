@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Auth Module for the Houzie application provides comprehensive authentication and authorization functionality. It supports multiple authentication methods including email/password, OTP-based authentication (email and phone), and Google OAuth integration.
+The Auth Module for the Houzie application provides comprehensive authentication and authorization functionality. It supports multiple authentication methods including email/password, OTP-based authentication (email and phone), Google OAuth integration, and password reset functionality.
 
 ## Features
 
@@ -36,11 +36,13 @@ The Auth Module for the Houzie application provides comprehensive authentication
    - Database-backed token storage
    - 7-day default expiration for refresh tokens
 
-### User Registration
+### User Registration & Password Management
 
 - Support for multiple user roles (ADMIN, BROKER, RENTER, etc.)
 - Unique constraint enforcement (email, phone, aadhar)
 - Automatic verification process initiation
+- Forgot password flow with email-based reset
+- Secure token verification for password reset
 
 ## Implementation Details
 
@@ -80,6 +82,14 @@ The Auth Module is composed of:
 4. JWT tokens are issued
 5. User is redirected to the frontend application
 
+#### Password Reset
+
+1. User requests password reset by providing their email
+2. System generates a secure reset token and sends it via email
+3. User verifies the token validity
+4. User submits a new password along with the token
+5. System updates the password after verifying the token
+
 ### Security Considerations
 
 - Passwords are never stored in plain text
@@ -87,6 +97,7 @@ The Auth Module is composed of:
 - Refresh tokens are rotated on use
 - JWT secrets are configurable via environment variables
 - Rate limiting is recommended for production deployments
+- Password reset tokens have limited validity
 
 ## API Endpoints
 
@@ -99,6 +110,9 @@ The Auth Module is composed of:
 | `/auth/refresh` | POST | Refresh access token |
 | `/auth/google` | GET | Initiate Google OAuth flow |
 | `/auth/google-redirect` | GET | Handle Google OAuth callback |
+| `/auth/forgot-password` | POST | Request password reset email |
+| `/auth/verify-reset-token` | POST | Verify password reset token |
+| `/auth/reset-password` | POST | Reset password with valid token |
 
 ## Configuration
 
@@ -148,3 +162,4 @@ The Auth Module integrates with:
 3. **Refresh Token Rotation**: Enhances security by limiting the lifetime of authentication credentials
 4. **Google OAuth**: Simplifies user onboarding with a trusted third-party authentication provider
 5. **OTP Verification**: Adds an additional layer of security and verifies user contact information
+6. **Password Reset Flow**: Provides secure self-service password recovery
