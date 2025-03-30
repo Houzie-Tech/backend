@@ -19,6 +19,8 @@ jobs:
             # Navigate to your project directory
             cd Houzie
 
+            ls 
+            
             # Execute your existing hosting script
             chmod +x ./deployment.sh
             ./deployment.sh
