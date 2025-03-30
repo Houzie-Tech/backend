@@ -20,11 +20,11 @@ jobs:
             cd backend
             
             # Execute your existing hosting script
-            if [ -f "./hosting.sh" ]; then
-              echo "Found hosting.sh - executing..."
+            if [ -f "./deployment.sh" ]; then
+              echo "Found deployment.sh - executing..."
               chmod +x ./hosting.sh
-              ./hosting.sh
+              ./deployment.sh
             else
-              echo "ERROR: hosting.sh not found in the current directory."
+              echo "ERROR: deployment.sh not found in the current directory."
               exit 1
             fi
