@@ -18,9 +18,17 @@ jobs:
           script: |
             # Navigate to your project directory
             cd Houzie
-
-            ls 
+            
+            # List files for debugging
+            echo "Current directory contents:"
+            ls -la
             
             # Execute your existing hosting script
-            chmod +x ./deployment.sh
-            ./deployment.sh
+            if [ -f "./hosting.sh" ]; then
+              echo "Found hosting.sh - executing..."
+              chmod +x ./hosting.sh
+              ./hosting.sh
+            else
+              echo "ERROR: hosting.sh not found in the current directory."
+              exit 1
+            fi
