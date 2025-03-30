@@ -17,11 +17,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             # Navigate to your project directory
-            cd Houzie
-            
-            # List files for debugging
-            echo "Current directory contents:"
-            ls -la
+            cd backend
             
             # Execute your existing hosting script
             if [ -f "./hosting.sh" ]; then
