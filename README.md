@@ -26,7 +26,7 @@ The application consists of the following modules, each with its own dedicated d
 10. [PropertyDescriptionModule](./docs/modules/property_description.md) - Property descriptions for listings
 11. [MailerModule](./docs/modules/mail.md) - mailer integration
 12. [OTPModule](./docs/modules/otp.md) - otp integration
-13. [MetroStationModule](./docs/modules/metro.md)
+13. [MetroStationModule](./docs/modules/metro.md) - metro station integration
 
 ### Validation
 
