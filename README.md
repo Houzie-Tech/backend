@@ -17,13 +17,16 @@ The application consists of the following modules, each with its own dedicated d
 1. [PrismaModule](./docs/modules/prisma.md) - Database connectivity using Prisma ORM
 2. [AuthModule](./docs/modules/auth.md) - Authentication and authorization functionality
 3. [FormModule](./docs/modules/form.md) - Form processing and file uploads
-4. [BrokerModule](./docs/modules/broker.md) - Message broker functionality
-5. [LeadsModule](./docs/modules/leads.md) - Lead generation and tracking
-6. [ProfileModule](./docs/modules/profile.md) - User profile management
+4. [BrokerModule](./docs/modules/broker.md) - Managing broker functionality
+5. [LeadsModule](./docs/leads/leads.md) - Lead generation and tracking
+6. [ProfileMoMessagedule](./docs/modules/profile.md) - User profile management
 7. [AdminModule](./docs/modules/admin.md) - Administrative functionality
 8. [ReportsModule](./docs/modules/reports.md) - Reporting and analytics
-9. [UserPreference](./docs/modules/user-preference.md) - User preference calculations
-10. [PropertyDescription](./docs/modules/property-description.md) - Property descriptions for listings
+9. [UserPreferenceModule](./docs/modules/user-preference.md) - User preference calculations
+10. [PropertyDescriptionModule](./docs/modules/property_description.md) - Property descriptions for listings
+11. [MailerModule](./docs/modules/mail.md) - mailer integration
+12. [OTPModule](./docs/modules/otp.md) - otp integration
+13. [MetroStationModule](./docs/modules/metro.md)
 
 ### Validation
 
